@@ -11,7 +11,7 @@ const { default: axios } = require('axios');
 const crypto = require("crypto");
 var fetch = require('node-fetch-polyfill');
 
-const whitelist = ["http://192.168.29.34:3000", "https://cashwin-e516f.web.app"];
+const whitelist = ["http://192.168.29.34:3000", "https://cashwin-e516f.web.app", "https://cashwin.pro"];
 let corsOptions = {
     origin: function (origin, callback) {
         if (whitelist.indexOf(origin) !== -1 || !origin) {
@@ -27,9 +27,9 @@ app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
 
-//mongodb+srv://teslawinadmin:anand0024@cluster0.ubmxhuq.mongodb.net/?retryWrites=true&w=majority
+//mongodb+srv://besefi2733:B6HB30t3nIbK5rGj@cashwin.a4fi5pi.mongodb.net/?retryWrites=true&w=majority
 //mongodb+srv://biomeeadmin:jcxfYgWQKLOzxzhn@cluster0.xgynqbe.mongodb.net/?retryWrites=true&w=majority
-const uri = "mongodb+srv://biomeeadmin:jcxfYgWQKLOzxzhn@cluster0.xgynqbe.mongodb.net/?retryWrites=true&w=majority"
+const uri = "mongodb+srv://besefi2733:B6HB30t3nIbK5rGj@cashwin.a4fi5pi.mongodb.net/?retryWrites=true&w=majority"
 mongoose.connect(uri).then(console.log('connected'))
 
 const client = new MongoClient(uri, {
@@ -1052,6 +1052,7 @@ app.post('/onDeposit', async (req, res) => {
         let response = await axios.get(`https://txt.i-payments.site/paytmQR/?key=zHPUrT54551426639646&id=${orderId}`)
         let data = response.data;
 
+        if(data.RESPCODE === '400') return res.status(400).send({ success: false, error: 'Failed to add balance'})
         if (resp2) return res.status(400).send({ success: false, error: 'Invalid or order id has been used already.' })
 
         if (data.STATUS === 'TXN_FAILURE') return res.status(400).send({ success: false, error: 'Failed to complete deposit.' })
@@ -1473,9 +1474,66 @@ setInterval(function () {
     }
 }, 1000);
 
+async function getParityResult(id) {
+    let result = await client.connect()
+    let db = result.db('test');
+    let collection = db.collection('fastparityorders');
+    
+    let resp = await collection.aggregate([{ $match: { period: id, selectType: 'number' } }, { $group: { _id: '$select', amount: { $sum: "$amount" } } }]).toArray()
+    let resp2 = await collection.aggregate([{ $match: { period: id, selectType: 'color' } }, { $group: { _id: '$select', amount: { $sum: "$amount" } } }]).toArray()
+
+    console.log(resp)
+
+    function filterResp(v) {
+        let a = resp.filter(x => x._id === v)
+        if(!a[0]) {
+            return 0
+        } else {
+            return a[0].amount * 9
+        }
+    }
+
+    function filterResp2(v) {
+        let a = resp2.filter(x => x._id === v)
+        if (!a[0]) {
+            return 0
+        } else {
+            if(v === 'V') {
+                return a[0].amount * 4.5
+            } else {
+                return a[0].amount * 2
+            }
+        }
+    }
+
+    let bets = [{ id: 0, value: filterResp('0') + filterResp2('R') + filterResp2('V') }, { id: 1, value: filterResp('1') + filterResp2('G') }, { id: 2, value: filterResp('2') + filterResp2('R') }, { id: 3, value: filterResp('3') + filterResp2('G') }, { id: 4, value: filterResp('4') + filterResp2('R') }, { id: 5, value: filterResp('5') + filterResp2('G') + filterResp2('V') }, { id: 6, value: filterResp('6') + filterResp2('R') }, { id: 7, value: filterResp('7') + filterResp2('G') }, { id: 8, value: filterResp('8') + filterResp2('R') }, { id: 9, value: filterResp('9') + filterResp2('G') }]
+
+    const closest = bets.reduce(
+        (acc, loc) =>
+            acc.value < loc.value
+                ? acc
+                : loc
+    )
+
+    function get_random(list) {
+        return list[Math.floor((Math.random() * list.length))];
+    }
+
+    let r = bets.filter(x => x.value === closest.value)
+    console.log(r)
+    let c = get_random(r)
+    console.log(c)
+
+    return c.id
+}
+
 async function updateFastParityPeriod(id) {
     try {
-        let result = Math.floor(Math.random() * (9 - 0 + 1)) + 0;
+        let result = await getParityResult(id.toString()).then((response) => {
+            return response;
+        });
+
+        console.log(result)
         let resultInColor;
         let isV = false;
 
