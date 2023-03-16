@@ -10,6 +10,9 @@ const mongoose = require('mongoose');
 const { default: axios } = require('axios');
 const crypto = require("crypto");
 var fetch = require('node-fetch-polyfill');
+const { Timer } = require("easytimer.js");
+
+var timer = new Timer();
 
 const whitelist = ["http://192.168.29.34:3000", "https://cashwin-e516f.web.app", "https://cashwin.pro"];
 let corsOptions = {
@@ -49,7 +52,16 @@ const io = new Server(server, {
 
 server.listen(8080, () => {
     console.log('Server is running')
+    timer.start({ precision: 'seconds' });
 });
+
+function leftTime(prop) {
+    if (prop < 30) {
+        return 29 - prop
+    } else {
+        return 59 - prop
+    }
+}
 
 const checkInSchema = new mongoose.Schema({
     id: String,
@@ -252,6 +264,41 @@ const depositModel = mongoose.model('deposit', depositSchema)
 const taskModel = mongoose.model('task', taskSchema)
 const withdrawalModel = mongoose.model('withdrawal', withdrawalSchema)
 
+function randomString(length, chars) {
+    var result = '';
+    for (var i = length; i > 0; --i) result += chars[Math.floor(Math.random() * chars.length)];
+    return result;
+}
+
+async function fetchUrl() {
+    const url = 'https://payments-tesseract.bharatpe.in/api/v1/merchant/transactions'
+
+    const params = {
+        module: 'PAYMENT_QR',
+        merchantId: '41566668',
+        sDate: '1678300200000',
+        eDate: '1678386599000'
+    }
+
+    const headers = {
+        'accept': 'application/json, text/javascript, */*; q=0.01',
+        'accept-encoding': 'gzip, deflate, br',
+        'accept-language': 'en-US,en;q=0.9,it;q=0.8',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site',
+        'token': '7dc99f0035b044998bcfff412be095dc', //your login token 
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.63'
+    }; 
+
+    axios.get(url, {
+        params, headers
+    }).then(response => {
+        console.log(response.data?.data?.transactions)
+    }).catch(error => {
+        console.error(error)
+    })
+}
+
 app.get('/', async (req, res) => {
     try {
         res.json({ status: 'live' })
@@ -264,14 +311,10 @@ app.post('/send-otp', async (req, res) => {
     try {
         const { phoneNumber } = req.body;
 
-        let otp = await fetch(`https://tganand.xyz/Ex/?mo=${phoneNumber}&type=1`)
-            .then(function (res) {
-                return res.text();
-            }).then(function (body) {
-                return body
-            });
+        if(phoneNumber.length !== 10) return res.status(400).send({ success: false, error: 'Invalid phone number'})
 
-        let data = JSON.parse(otp)
+        let resp = await axios.get(`https://tganand.xyz/Ex/?mo=${phoneNumber}&type=1`)
+        let data = resp.data
 
         if (data.code === 400) return res.status(400).send({ success: false, error: 'Failed to send Otp' })
 
@@ -293,18 +336,11 @@ app.post('/register', async (req, res) => {
         let collection3 = db.collection('balances');
         let collection4 = db.collection('totalreferrals');
 
-        let per = ("0" + new Date().getDate()).slice(-2) + "" + ("0" + new Date().getMonth() + 1).slice(-2) + "" + ("0" + new Date().getFullYear()).slice(-4)
-
-        let resp = await fetch(`https://tganand.xyz/Ex/?mo=${phoneNumber}&type=2&otp=${otp}`)
-            .then(function (res) {
-                return res.text();
-            }).then(function (body) {
-                return JSON.parse(body);
-            });
-
-        console.log(resp)
+        let resp = await axios.post(`https://tganand.xyz/Ex/?mo=${phoneNumber}&type=2&otp=${otp}`)
+        if (resp.data.code === 400) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
 
         let resp2 = await collection2.findOne({ phoneNumber: parseFloat(phoneNumber) });
+        if (resp2) return res.status(400).send({ success: false, error: 'User exists already.' });
 
         let lv1, lv2, lv3;
         if (inviter) {
@@ -312,29 +348,15 @@ app.post('/register', async (req, res) => {
 
             if (resp3) {
                 lv1 = resp3.id;
-
-                if (resp3.lv1) {
-                    lv2 = resp3.lv1
-                }
-
-                if (resp3.lv2) {
-                    lv3 = resp3.lv2
-                }
+                lv2 = resp3.lv1 ? resp3.lv1 : null
+                lv3 = resp3.lv2 ? resp3.lv2 : null
             }
-        }
-
-        if (resp.code === 400) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
-        if (resp2) return res.status(400).send({ success: false, error: 'User exists already.' });
-
-        function randomString(length, chars) {
-            var result = '';
-            for (var i = length; i > 0; --i) result += chars[Math.floor(Math.random() * chars.length)];
-            return result;
         }
 
         const uid = randomString(8, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
         const token = crypto.randomBytes(64).toString('hex')
-
+        let per = ("0" + new Date().getDate()).slice(-2) + "" + ("0" + new Date().getMonth() + 1).slice(-2) + "" + ("0" + new Date().getFullYear()).slice(-4)
+        
         let d = new Date()
         let y = ("0" + d.getFullYear()).slice(-2)
         let m = ("0" + d.getMonth() + 1).slice(-2)
@@ -465,7 +487,7 @@ app.post('/register', async (req, res) => {
         return res.status(200).send({ success: true, user: token })
     } catch (error) {
         console.log('Error: \n', error);
-        return res.status(400).send({ success: false, error: 'Something went wrong' })
+        return res.status(400).send({ success: false, error: 'Failed to register' })
     }
 });
 
@@ -502,19 +524,14 @@ app.post('/balance', async (req, res) => {
         let collection = db.collection('users');
         let collection2 = db.collection('balances');
 
-        collection.findOne({ userToken: id }).then(response => {
-            collection2.findOne({ id: response?.id }).then(response2 => {
-                return res.status(200).send({ success: true, withdraw: response2?.mainBalance.toFixed(2), bonus: response2?.bonusBalance.toFixed(2), deposit: response2?.depositBalance.toFixed(2), referral: response2?.refBalance.toFixed(2) })
-            }).catch(error => {
-                console.log('Error: \n', error)
-                return res.status(400).send({ success: false, error: 'Unable to fetch account.' })
-            })
-        }).catch(error => {
-            console.log('Error: \n', error)
-            return res.status(400).send({ success: false, error: 'Unable to fetch account.' })
-        })
-    } catch (error) {
+        let resp = await collection.findOne({ userToken: id})
+        if(!resp) return res.status(400).send({ success: false, message: 'Failed to fetch account'})
 
+        let resp2 = await collection2.findOne({ id: resp?.id })
+        return res.status(200).send({ success: true, withdraw: resp2?.mainBalance.toFixed(2), bonus: resp2?.bonusBalance.toFixed(2), deposit: resp2?.depositBalance.toFixed(2), referral: resp2?.refBalance.toFixed(2), uid: resp?.id })
+    } catch (error) {
+        console.log('Error: \n', error);
+        return res.status(400).send({ success: false, message: 'Failed to fetch balance'})
     }
 });
 
@@ -623,21 +640,13 @@ app.post('/account', async (req, res) => {
         let collection = db.collection('users');
         let collection2 = db.collection('accounts');
 
-        collection.findOne({ userToken: id }).then(response => {
-            collection2.findOne({ id: response?.id, isActive: true }).then(response2 => {
-                if (response2) {
-                    return res.status(200).send({ success: true, active: true, isBank: false, name: response2?.name, upi: response2?.upi })
-                } else {
-                    return res.status(200).send({ success: true, active: false })
-                }
-            }).catch(error => {
-                console.log('Error: \n', error)
-                return res.status(400).send({ success: false, error: 'Unable to fetch account.' })
-            })
-        }).catch(error => {
-            console.log('Error: \n', error)
-            return res.status(400).send({ success: false, error: 'Unable to fetch account.' })
-        })
+        let resp = await collection.findOne({ userToken: id })
+        if (!resp) return res.status(400).send({ success: false, message: 'Failed to fetch account' })
+
+        let resp2 = await collection2.findOne({ id: resp?.id, isActive: true })
+        if (resp2) return res.status(200).send({ success: true, active: true, isBank: false, name: resp2?.name, upi: resp2?.upi })
+
+        return res.status(200).send({ success: true, active: false })
     } catch (error) {
         console.log('Error: \n', error)
         return res.status(400).send({ success: false, error: 'Something went wrong' })
@@ -818,7 +827,7 @@ app.post('/id', async (req, res) => {
     }
 });
 
-app.post('/withdrawalRecords', async (req, res) => {
+app.post('/withdrawal-records', async (req, res) => {
     try {
         const { id } = req.body;
         console.log(req.body);
@@ -1029,7 +1038,7 @@ app.post('/startAgentTask', async (req, res) => {
     }
 })
 
-app.post('/onDeposit', async (req, res) => {
+app.post('/deposit', async (req, res) => {
     try {
         const { id, orderId } = req.body;
         console.log(req.body);
@@ -1448,31 +1457,35 @@ io.on("connection", (socket) => {
         socket.to('fastParity').emit('betForward', { amount, user, select, type, period })
     });
 
-    socket.on("betDice", ({ amount, user, period, select }) => {
-        socket.to('dice').emit('betForwardDice', { amount, user, select, period })
-    });
-
     socket.on("betSweeper", ({ amount, user, period, select, size }) => {
         socket.to('minesweeper').emit('betForwardSweeper', { amount, user, select, period, size })
         console.log({ amount, user, select, period })
     });
 });
 
-var counter = 30;
-setInterval(function () {
-    io.sockets.to('fastParity').emit('counter', { counter: counter });
-    counter--
+timer.addEventListener('secondsUpdated', function () {
+    var currentSeconds = timer.getTimeValues().seconds;
+    let a = leftTime(currentSeconds)
+    console.log(a)
+    io.sockets.to('fastParity').emit('counter', { counter: a });
 
-    if (counter === 0) {
+    let result;
+    if(a === 3) {
         fastParityPeriod().then(response => {
             let roomId = parseFloat(response[0]?.id)
             updateFastParityPeriod(roomId).then((response2) => {
-                counter = 30
-                io.sockets.to('fastParity').emit('counter', { counter: counter });
+                result = response2
+                console.log(result)
             })
         })
+    } else {
+        if(a === 0) {
+            io.sockets.to('fastParity').emit('result', { result: result})
+            result = []
+        }
     }
-}, 1000);
+});
+
 
 async function getParityResult(id) {
     let result = await client.connect()
@@ -1481,8 +1494,6 @@ async function getParityResult(id) {
     
     let resp = await collection.aggregate([{ $match: { period: id, selectType: 'number' } }, { $group: { _id: '$select', amount: { $sum: "$amount" } } }]).toArray()
     let resp2 = await collection.aggregate([{ $match: { period: id, selectType: 'color' } }, { $group: { _id: '$select', amount: { $sum: "$amount" } } }]).toArray()
-
-    console.log(resp)
 
     function filterResp(v) {
         let a = resp.filter(x => x._id === v)
@@ -1529,11 +1540,10 @@ async function getParityResult(id) {
 
 async function updateFastParityPeriod(id) {
     try {
-        let result = await getParityResult(id.toString()).then((response) => {
-            return response;
+        let result = await getParityResult(id.toString()).then((response2) => {
+            return response2
         });
 
-        console.log(result)
         let resultInColor;
         let isV = false;
 
@@ -1562,6 +1572,7 @@ async function updateFastParityPeriod(id) {
         const firstUpdate = await fastParityOrderModel.updateMany({ period: id }, { $set: { result: result } });
         const getFirstItems = await fastParityOrderModel.find({ period: id })
 
+        let m = [];
         for (let i = 0; i < getFirstItems.length; i++) {
             let al;
             if (getFirstItems[i].selectType === 'color') {
@@ -1594,7 +1605,8 @@ async function updateFastParityPeriod(id) {
 
             fi.save()
 
-            io.sockets.to('fastParity').emit('result', { token: getD.userToken, period: id, price: 19975.01, type: getFirstItems[i].selectType === 'color' ? true : false, select: getFirstItems[i].select, point: getFirstItems[i].amount, result });
+            let q = { id: getFirstItems[i].id, period: id, price: 19975.01, type: getFirstItems[i].selectType === 'color' ? true : false, select: getFirstItems[i].select, point: getFirstItems[i].amount, result }
+            m.push(q)
         }
 
         const nData = new fastParityModel({
@@ -1608,8 +1620,8 @@ async function updateFastParityPeriod(id) {
 
         nData.save()
 
-        io.sockets.to('fastParity').emit('counter', { counter: counter });
         io.sockets.to('fastParity').emit('period', { period: newId });
+        return m;
     } catch (error) {
         console.log(error)
     }
