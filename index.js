@@ -1463,29 +1463,30 @@ io.on("connection", (socket) => {
     });
 });
 
+let parityResult, updatedParityId;
 timer.addEventListener('secondsUpdated', function () {
     var currentSeconds = timer.getTimeValues().seconds;
     let a = leftTime(currentSeconds)
     console.log(a)
     io.sockets.to('fastParity').emit('counter', { counter: a });
 
-    let result;
     if(a === 3) {
         fastParityPeriod().then(response => {
             let roomId = parseFloat(response[0]?.id)
             updateFastParityPeriod(roomId).then((response2) => {
-                result = response2
-                console.log(result)
+                parityResult = response2.result
+                updatedParityId = response2.id
             })
         })
     } else {
         if(a === 0) {
-            io.sockets.to('fastParity').emit('result', { result: result})
+            console.log(parityResult, updatedParityId)
+            io.sockets.to('fastParity').emit('result', { result: parityResult})
+            io.sockets.to('fastParity').emit('period', { period: updatedParityId });
             result = []
         }
     }
 });
-
 
 async function getParityResult(id) {
     let result = await client.connect()
@@ -1620,8 +1621,8 @@ async function updateFastParityPeriod(id) {
 
         nData.save()
 
-        io.sockets.to('fastParity').emit('period', { period: newId });
-        return m;
+        console.log(m)
+        return { result: m, id: newId};
     } catch (error) {
         console.log(error)
     }
