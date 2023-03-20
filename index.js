@@ -1069,7 +1069,21 @@ app.post('/deposit', async (req, res) => {
         })
 
         deposit.save();
-        return res.status(200).send({ success: true, tid})
+        res.status(200).send({ success: true, tid})
+
+        setTimeout(async function () {
+            let resp2 = await collection2.findOne({ tid })
+
+            if (resp2.status === 'Pending') {
+                await collection2.updateOne({ tid }, {
+                    $set: {
+                        status: 'Failed'
+                    }
+                })
+            }
+
+            console.log('updated: ', tid)
+        }, 1000 * 60 * 30);
     } catch (error) {
         console.log('Error: \n', error)
     }
