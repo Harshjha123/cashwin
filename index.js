@@ -1012,7 +1012,8 @@ app.post('/claimAgentLevel', async (req, res) => {
 
         return res.status(200).send({ success: true, level: resp2.level + 1, invited: 0 })
     } catch (error) {
-
+        console.log('Error: \n', error)
+        res.status(400).send({ success: false, error: 'Failed to fetch task details.' })
     }
 })
 
@@ -1311,7 +1312,7 @@ app.post('/getTask', async (req, res) => {
         console.log(req.body);
 
         const user = await userModel.findOne({ userToken: id })
-        const deposit = await depositModel.find({ id: user.id, status: true })
+        const deposit = await depositModel.find({ id: user.id, status: 'Success' })
         const invite = await totalRefModel.findOne({ id: user.id })
         const order = await orderBookModel.findOne({ id: user.id })
         const task = await taskModel.findOne({ id: user.id })
