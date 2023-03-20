@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require("express-rate-limit");
 const app = express();
 
 const http = require('http');
@@ -31,6 +32,12 @@ let corsOptions = {
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
+app.use(
+    rateLimit({
+        windowMs: 1000, // 12 hour duration in milliseconds
+        max: 1
+    })
+);
 
 //mongodb+srv://besefi2733:B6HB30t3nIbK5rGj@cashwin.a4fi5pi.mongodb.net/?retryWrites=true&w=majority
 //mongodb+srv://biomeeadmin:jcxfYgWQKLOzxzhn@cluster0.xgynqbe.mongodb.net/?retryWrites=true&w=majority
@@ -44,6 +51,7 @@ const client = new MongoClient(uri, {
 });
 
 const server = http.createServer(app)
+
 var agent = new http.Agent({
     keepAlive: true,
     maxSockets: 1,
