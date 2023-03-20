@@ -32,12 +32,11 @@ let corsOptions = {
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
-app.use(
-    rateLimit({
-        windowMs: 1000, // 12 hour duration in milliseconds
-        max: 1
-    })
-);
+
+const limiter = rateLimit({
+    windowMs: 1000, // 12 hour duration in milliseconds
+    max: 1
+})
 
 //mongodb+srv://besefi2733:B6HB30t3nIbK5rGj@cashwin.a4fi5pi.mongodb.net/?retryWrites=true&w=majority
 //mongodb+srv://biomeeadmin:jcxfYgWQKLOzxzhn@cluster0.xgynqbe.mongodb.net/?retryWrites=true&w=majority
@@ -1238,7 +1237,7 @@ app.post('/on-deposit', async (req, res) => {
     }
 });
 
-app.post('/claimTask', async (req, res) => {
+app.post('/claimTask', limiter, async (req, res) => {
     try {
         const { id, task } = req.body;
         console.log(req.body);
