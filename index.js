@@ -2045,7 +2045,7 @@ app.post('/fetch-panel-data', async (req, res) => {
         let collection2 = db.collection('deposits');
 
         let resp = await collection.aggregate([{ $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
-        let resp2 = await collection2.aggregate([{ $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
+        let resp2 = await collection2.aggregate([{ $match: { status: 'Success'}}, { $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
         let resp3 = await collection.find({ status: 'Pending'}).toArray()
         let user = await collection3.find({}).toArray()
 
