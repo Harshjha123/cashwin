@@ -1731,7 +1731,7 @@ async function updateFastParityPeriod(id) {
                 image: 'https://res.cloudinary.com/fiewin/image/upload/images/FastParityIncome.png'
             })
 
-            if(!al || al === undefined) {
+            if(al) {
                 fi.save()
             }
 
