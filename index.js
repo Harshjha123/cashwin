@@ -17,7 +17,7 @@ require('dotenv').config()
 
 var timer = new Timer();
 
-const whitelist = ["http://192.168.29.34:3000", "https://cashwin-e516f.web.app", "https://cashwin.pro"];
+const whitelist = ["http://192.168.29.34:3000", "https://cashwin-e516f.web.app", "https://cashwin.pro", "https://www.cashwin.pro"];
 let corsOptions = {
     origin: function (origin, callback) {
         if (whitelist.indexOf(origin) !== -1 || !origin) {
