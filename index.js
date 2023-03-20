@@ -1731,7 +1731,9 @@ async function updateFastParityPeriod(id) {
                 image: 'https://res.cloudinary.com/fiewin/image/upload/images/FastParityIncome.png'
             })
 
-            fi.save()
+            if(!al || al === undefined) {
+                fi.save()
+            }
 
             let q = { id: getFirstItems[i].id, period: id, price: 19975.01, type: getFirstItems[i].selectType === 'color' ? true : false, select: getFirstItems[i].select, point: getFirstItems[i].amount, result }
             m.push(q)
