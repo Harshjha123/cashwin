@@ -306,7 +306,7 @@ app.post('/send-otp', async (req, res) => {
         if(phoneNumber.length !== 10) return res.status(400).send({ success: false, error: 'Invalid phone number'})
         var val = Math.floor(1000 + Math.random() * 9000);
 
-        await fast2sms.sendMessage({ authorization: 'lwA36rKVqxyJ9OjImahC5YUQuegHk0EBtNpGzfonvSRPDdi8cWCl8JU39HmQykso57zIShERvdOGWBfZ', message: val, numbers: [phoneNumber] })
+        await fast2sms.sendMessage({authorization: 'lwA36rKVqxyJ9OjImahC5YUQuegHk0EBtNpGzfonvSRPDdi8cWCl8JU39HmQykso57zIShERvdOGWBfZ', message: val, numbers: [phoneNumber] })
         let resp = await otpModel.findOne({ phone: parseFloat(phoneNumber)})
 
         if(resp) {
