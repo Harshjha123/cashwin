@@ -869,7 +869,9 @@ app.post('/withdraw', limiter, async (req, res) => {
         const user = await userModel.findOne({ userToken: id });
         const balance = await balanceModel.findOne({ id: user.id });
         const card = await addCardModel.findOne({ id: user.id, isActive: true });
+        const deposit = await depositModel.findOne({ id: user.id, status: 'Success' });
 
+        if(!deposit) return res.status(400).send({ success: false, error: 'You need to make deposit of atleast 30rs for first withdrawal.'})
         if (amount < 100) return res.status(400).send({ success: false, error: 'Unable to make withdrawal request' })
         if (balance.mainBalance < parseFloat(amount)) return res.status(400).send({ success: false, error: 'Insufficient Balance' })
 
@@ -2047,7 +2049,7 @@ app.post('/fetch-panel-data', async (req, res) => {
         let resp3 = await collection.find({ status: 'Pending'}).toArray()
         let user = await collection3.find({}).toArray()
 
-        return res.status(200).send({ users: user.length, withdrawals: resp[0].amount, deposits: resp2[0].amount, records: resp3})
+        return res.status(200).send({ users: !user[0] ? 0 : user.length, withdrawals: !resp[0] ? 0 : resp[0].amount, deposits: !resp2[0] ? 0 : resp2[0].amount, records: resp3})
     } catch (error) {
         console.log('Error: \n', error) 
     }
