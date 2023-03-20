@@ -44,6 +44,11 @@ const client = new MongoClient(uri, {
 });
 
 const server = http.createServer(app)
+var agent = new http.Agent({
+    keepAlive: true,
+    maxSockets: 1,
+    keepAliveMsecs: 3000
+})
 
 const io = new Server(server, {
     cors: {
