@@ -311,7 +311,7 @@ app.get('/', async (req, res) => {
     }
 });
 
-app.post('/send-otp', async (req, res) => {
+app.post('/send-otp', limiter, async (req, res) => {
     try {
         const { phoneNumber } = req.body;
 
@@ -338,7 +338,7 @@ app.post('/send-otp', async (req, res) => {
     }
 });
 
-app.post('/register', async (req, res) => {
+app.post('/register', limiter, async (req, res) => {
     try {
         const { phoneNumber, otp, password, inviter } = req.body;
         console.log(req.body);
@@ -570,7 +570,7 @@ app.post('/team', async (req, res) => {
     }
 })
 
-app.post('/checkIn', async (req, res) => {
+app.post('/checkIn', limiter, async (req, res) => {
     try {
         const { id } = req.body;
         console.log(req.body);
@@ -861,7 +861,7 @@ app.post('/withdrawal-records', async (req, res) => {
     }
 })
 
-app.post('/withdraw', async (req, res) => {
+app.post('/withdraw', limiter, async (req, res) => {
     try {
         const { id, amount } = req.body;
         console.log(req.body)
@@ -964,7 +964,7 @@ app.post('/getUserAgentDetails', async (req, res) => {
     }
 })
 
-app.post('/claimAgentLevel', async (req, res) => {
+app.post('/claimAgentLevel', limiter, async (req, res) => {
     try {
         const { id, lv } = req.body;
         console.log(req.body);
@@ -1029,7 +1029,7 @@ app.post('/claimAgentLevel', async (req, res) => {
     }
 })
 
-app.post('/startAgentTask', async (req, res) => {
+app.post('/startAgentTask', limiter, async (req, res) => {
     try {
         const { id } = req.body;
         console.log(req.body);
@@ -1127,7 +1127,7 @@ app.post('/fetch-tid', async (req, res) => {
     }
 })
 
-app.post('/on-deposit', async (req, res) => {
+app.post('/on-deposit', limiter, async (req, res) => {
     try {
         const { id, orderId, tid } = req.body;
         console.log(req.body);
