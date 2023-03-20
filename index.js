@@ -11,6 +11,8 @@ const { default: axios } = require('axios');
 const crypto = require("crypto");
 var fetch = require('node-fetch-polyfill');
 const { Timer } = require("easytimer.js");
+const fast2sms = require('fast-two-sms')
+require('dotenv').config()
 
 var timer = new Timer();
 
@@ -149,7 +151,10 @@ const depositSchema = new mongoose.Schema({
     orderId: String,
     amount: Number,
     date: String,
-    status: Boolean
+    status: String,
+    tid: String,
+    period: String,
+    app: String
 })
 
 const orderBookSchema = new mongoose.Schema({
@@ -197,7 +202,8 @@ const withdrawalSchema = new mongoose.Schema({
     status: String,
     wid: Number,
     fee: Number,
-    date: String
+    date: String,
+    period: String
 })
 
 const taskSchema = new mongoose.Schema({
@@ -244,6 +250,13 @@ const lifafaSchema = new mongoose.Schema({
     userClaimed: Array
 });
 
+const otpSchema = new mongoose.Schema({
+    phone: Number,
+    otp: Number,
+    createdAt: { type: Date, expires: '5m', default: Date.now }
+})
+
+const otpModel = mongoose.model('otp', otpSchema)
 const lifafaModel = mongoose.model('lifafa', lifafaSchema)
 const agentModel = mongoose.model('agent', agentSchema)
 const newRefModel = mongoose.model('newref', newRefSchema)
@@ -255,8 +268,6 @@ const balanceModel = mongoose.model('balance', balanceSchema);
 const addCardModel = mongoose.model('account', addCardSchema);
 const fastParityModel = mongoose.model('fastParity', fastParitySchema)
 const fastParityOrderModel = mongoose.model('fastParityOrder', fastParityOrderSchema)
-const diceModel = mongoose.model('dice', diceSchema)
-const diceOrderModel = mongoose.model('diceOrder', diceOrderSchema)
 const checkInModel = mongoose.model('checkin', checkInSchema)
 const refModel = mongoose.model('referral', refSchema)
 const totalRefModel = mongoose.model('totalReferral', totalRefSchema)
@@ -271,33 +282,14 @@ function randomString(length, chars) {
 }
 
 async function fetchUrl() {
-    const url = 'https://payments-tesseract.bharatpe.in/api/v1/merchant/transactions'
-
-    const params = {
-        module: 'PAYMENT_QR',
-        merchantId: '41566668',
-        sDate: '1678300200000',
-        eDate: '1678386599000'
-    }
-
-    const headers = {
-        'accept': 'application/json, text/javascript, */*; q=0.01',
-        'accept-encoding': 'gzip, deflate, br',
-        'accept-language': 'en-US,en;q=0.9,it;q=0.8',
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'same-site',
-        'token': '7dc99f0035b044998bcfff412be095dc', //your login token 
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.63'
-    }; 
-
-    axios.get(url, {
-        params, headers
-    }).then(response => {
-        console.log(response.data?.data?.transactions)
-    }).catch(error => {
-        console.error(error)
+    await fast2sms.sendMessage({ authorization: 'lwA36rKVqxyJ9OjImahC5YUQuegHk0EBtNpGzfonvSRPDdi8cWCl8JU39HmQykso57zIShERvdOGWBfZ', message: 'My First Message', numbers: ['6202565956']}).then((response) => {
+        console.log('Data: ', response)
+    }).catch((error) => {
+        console.log(error)
     })
 }
+
+//fetchUrl()
 
 app.get('/', async (req, res) => {
     try {
@@ -312,12 +304,21 @@ app.post('/send-otp', async (req, res) => {
         const { phoneNumber } = req.body;
 
         if(phoneNumber.length !== 10) return res.status(400).send({ success: false, error: 'Invalid phone number'})
+        var val = Math.floor(1000 + Math.random() * 9000);
 
-        let resp = await axios.get(`https://tganand.xyz/Ex/?mo=${phoneNumber}&type=1`)
-        let data = resp.data
+        await fast2sms.sendMessage({ authorization: 'lwA36rKVqxyJ9OjImahC5YUQuegHk0EBtNpGzfonvSRPDdi8cWCl8JU39HmQykso57zIShERvdOGWBfZ', message: val, numbers: [phoneNumber] })
+        let resp = await otpModel.findOne({ phone: parseFloat(phoneNumber)})
 
-        if (data.code === 400) return res.status(400).send({ success: false, error: 'Failed to send Otp' })
+        if(resp) {
+            await otpModel.deleteOne({ phone: parseFloat(phoneNumber)})
+        }
 
+        let otp = new otpModel({
+            phone: phoneNumber,
+            otp: val
+        })
+
+        otp.save()
         return res.status(200).send({ success: true })
     } catch (error) {
         console.log('Error: \n', error)
@@ -335,9 +336,11 @@ app.post('/register', async (req, res) => {
         let collection2 = db.collection('users');
         let collection3 = db.collection('balances');
         let collection4 = db.collection('totalreferrals');
+        let collection9 = db.collection('otps');
 
-        let resp = await axios.post(`https://tganand.xyz/Ex/?mo=${phoneNumber}&type=2&otp=${otp}`)
-        if (resp.data.code === 400) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
+        let resp = await collection9.findOne({ phone: parseFloat(phoneNumber)})
+        if (!resp) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
+        if (resp.otp !== parseFloat(otp)) return res.status(400).send({ success: false, error: 'Otp not matched.' })
 
         let resp2 = await collection2.findOne({ phoneNumber: parseFloat(phoneNumber) });
         if (resp2) return res.status(400).send({ success: false, error: 'User exists already.' });
@@ -466,6 +469,8 @@ app.post('/register', async (req, res) => {
         checkInData.save()
         fi.save()
         o.save()
+
+        await otpModel.deleteOne({ phone: parseFloat(phoneNumber)})
 
         if (lv1) {
             collection3.findOneAndUpdate({ id: lv1 }, { $inc: { refBalance: 1 } })
@@ -879,6 +884,7 @@ app.post('/withdraw', async (req, res) => {
             upi: card.upi,
             wid: parseFloat(eDate),
             fee: fee,
+            period: date.getDate() + '' + date.getMonth() + '' + date.getFullYear(),
             date: ("0" + date.getMonth()).slice(-2) + '/' + ("0" + date.getDate()).slice(-2) + ' ' + ("0" + date.getHours()).slice(-2) + ':' + ("0" + date.getMinutes()).slice(-2)
         })
 
@@ -1040,8 +1046,97 @@ app.post('/startAgentTask', async (req, res) => {
 
 app.post('/deposit', async (req, res) => {
     try {
-        const { id, orderId } = req.body;
+        const { id, amount } = req.body;
         console.log(req.body);
+
+        let result = await client.connect()
+        let db = result.db('test')
+        let collection = db.collection('users');
+        let collection2 = db.collection('deposits');
+
+        let resp = await collection.findOne({ userToken: id })
+
+        let tid = randomString(11, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
+        let a = new Date()
+
+        let deposit = new depositModel({
+            id: resp.id,
+            tid,
+            status: 'Pending',
+            amount,
+            period: a.getDate() + '' + a.getMonth() + '' + a.getFullYear(),
+            date: ("0" + (a.getMonth() + 1)).slice(-2) + '/' + ("0" + (a.getDate())).slice(-2) + ' ' + ("0" + (a.getHours())).slice(-2) + ':' + ("0" + (a.getMinutes())).slice(-2)
+        })
+
+        deposit.save();
+        res.status(200).send({ success: true, tid})
+
+        setTimeout(async function () {
+            let resp2 = await collection2.findOne({ tid })
+
+            if (resp2.status === 'Pending') {
+                await collection2.updateOne({ tid }, {
+                    $set: {
+                        status: 'Failed'
+                    }
+                })
+            }
+            
+            console.log('updated: ', tid)
+        }, 1000 * 60 * 30);
+    } catch (error) {
+        console.log('Error: \n', error)
+    }
+})
+
+app.post('/fetch-tid', async (req, res) => {
+    try {
+        const { id, tid} = req.body;
+        console.log(req.body)
+
+        let result = await client.connect()
+        let db = result.db('test')
+        let collection = db.collection('users');
+        let collection2 = db.collection('deposits');
+
+        let resp = await collection.findOne({ userToken: id })
+        let resp2 = await collection2.findOne({ id: resp.id, tid})
+
+        console.log(resp2)
+
+        if(resp2 && resp2.status === 'Pending') {
+            return res.status(200).send({ success: true, amount: resp2.amount})
+        }
+
+        return res.status(400).send({ success: false, error: 'Invalid or Expired Transaction id'})
+    } catch (error) {
+        
+    }
+})
+
+app.post('/on-deposit', async (req, res) => {
+    try {
+        const { id, orderId, tid } = req.body;
+        console.log(req.body);
+
+        const url = 'https://payments-tesseract.bharatpe.in/api/v1/merchant/transactions'
+
+        const params = {
+            module: 'PAYMENT_QR',
+            merchantId: '41566668',
+            sDate: '1678300200000',
+            eDate: Date.now()
+        }
+
+        const headers = {
+            'accept': 'application/json, text/javascript, */*; q=0.01',
+            'accept-encoding': 'gzip, deflate, br',
+            'accept-language': 'en-US,en;q=0.9,it;q=0.8',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-site',
+            'token': '7dc99f0035b044998bcfff412be095dc', //your login token 
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.63'
+        }; 
 
         let result = await client.connect()
         let db = result.db('test')
@@ -1050,42 +1145,47 @@ app.post('/deposit', async (req, res) => {
         let collection3 = db.collection('balances')
         let collection4 = db.collection('referrals');
         let collection5 = db.collection('agents');
-        let collection6 = db.collection('orders')
+        let collection6 = db.collection('orders');
 
         let resp = await collection.findOne({ userToken: id })
-        let resp2 = await collection2.findOne({ orderId: orderId })
+        let resp2 = await collection2.findOne({ tid, id: resp.id })
+        if(resp2?.status !== 'Pending') return res.status(400).send({ success: false, error: 'Order has been completed or failed. Please create a new one.'})
+
+        let resp4 = await collection2.findOne({ orderId: orderId })
         let resp3 = await collection6.findOne({ id: resp.id })
 
-        if (resp2) return res.status(400).send({ success: false, error: 'Invalid or order id has been used already.' })
+        if (resp4) return res.status(400).send({ success: false, error: 'Invalid or order id has been used already.' })
 
-        let response = await axios.get(`https://txt.i-payments.site/paytmQR/?key=zHPUrT54551426639646&id=${orderId}`)
-        let data = response.data;
+        let response = await axios.get(url, {params, headers})
+        let data2 = response.data?.data?.transactions
 
-        if(data.RESPCODE === '400') return res.status(400).send({ success: false, error: 'Failed to add balance'})
-        if (resp2) return res.status(400).send({ success: false, error: 'Invalid or order id has been used already.' })
+        let respo = data2.filter(x => x.bankReferenceNo === orderId.toString())
 
-        if (data.STATUS === 'TXN_FAILURE') return res.status(400).send({ success: false, error: 'Failed to complete deposit.' })
-        if (parseFloat(data.TXNAMOUNT) < 30) return res.status(200).send({ success: false, error: 'Amount must be greater than 30' })
+        console.log('Response: ', respo)
+        let data = respo[0]
 
-        let deposit = new depositModel({
-            id: resp.id,
-            orderId: data.ORDERID,
-            amount: parseFloat(data.TXNAMOUNT),
-            date: data.TXNDATE
+        if (!data || data.type !== 'PAYMENT_RECV' || data.status !== 'SUCCESS') return res.status(400).send({ success: false, error: 'Failed to add balance.' }) 
+        if (parseFloat(data.amount) < 30) return res.status(400).send({ success: false, error: 'Amount must be greater than 30' })
+
+        await collection2.findOneAndUpdate({ id: resp.id, tid}, {
+            $set: {
+                amount: data.amount,
+                status: 'Success',
+                orderId: orderId,
+                app: data.payerHandle
+            }
         })
-
-        await collection3.findOneAndUpdate({ id: resp.id }, { $inc: { depositBalance: parseFloat(data.TXNAMOUNT), bonusBalance: parseFloat(data.TXNAMOUNT) } })
-        await collection6.findOneAndUpdate({ id: resp.id }, { $inc: { deposit: parseFloat(data.TXNAMOUNT) } })
-        deposit.save()
+        await collection3.findOneAndUpdate({ id: resp.id }, { $inc: { depositBalance: parseFloat(data.amount), bonusBalance: parseFloat(data.amount) } })
+        await collection6.findOneAndUpdate({ id: resp.id }, { $inc: { deposit: parseFloat(data.amount) } })
 
         await collection4.updateMany({ user: resp?.id }, {
             $inc: {
-                totalDeposit: parseFloat(data.TXNAMOUNT)
+                totalDeposit: parseFloat(data.amount)
             }
         })
 
         if (!resp.effective) {
-            if ((resp3?.deposit + parseFloat(data.TXNAMOUNT)) > 99) {
+            if ((resp3?.deposit + parseFloat(data.amount)) > 99) {
                 await collection.updateOne({ id: resp?.id }, {
                     $set: {
                         effective: true
@@ -1259,6 +1359,33 @@ app.post('/getDailyRecord', async (req, res) => {
     }
 });
 
+
+async function withdraw() {
+    let data = {
+        accountID: 'MGX1383',
+        token: 'MGX7d94bef4196d8149fbb278ebc8b3882b180f0480c67b1afbbedc9208ac210af9',
+        payout_account_no: '916203687692',
+        payout_ifsc: 'PYTM0123456',
+        payout_amount: '50'
+    }
+
+    axios({
+        method: 'post',
+        url: 'https://magixapi.com/payouts/_bankTransfer.php',
+        data: {
+            payout_request: data
+        },
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then((response) => {
+        console.log(response.data)
+    }).catch((error) => {
+        console.log('Error: \n', error)
+    })
+}
+
+//withdraw()
 
 
 
@@ -1854,7 +1981,7 @@ app.post('/claimBox', async (req, res) => {
 
             await collection3.findOneAndUpdate({ id: response.id }, {
                 $inc: {
-                    mainBalance: nxt.ATN
+                    mainBalance: nxt.ATN?.toFixed(2)
                 }
             })
 
@@ -1881,5 +2008,96 @@ app.post('/myOrder/sweeper', async (req, res) => {
     } catch (error) {
         console.log('Error: ', error);
         return res.status(400).send({ success: false, error: 'Something went wrong' })
+    }
+})
+
+
+
+
+
+/* PANEL */
+app.post('/fetch-panel-data', async (req, res) => {
+    try {
+        const { id } = req.body;
+        console.log(req.body)
+
+        let result = await client.connect()
+        let db = result.db('test');
+        let collection3 = db.collection('users');
+        let collection = db.collection('withdrawals');
+        let collection2 = db.collection('deposits');
+
+        let resp = await collection.aggregate([{ $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
+        let resp2 = await collection2.aggregate([{ $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
+        let resp3 = await collection.find({ status: 'Pending'}).toArray()
+        let user = await collection3.find({}).toArray()
+
+        return res.status(200).send({ users: user.length, withdrawals: resp[0].amount, deposits: resp2[0].amount, records: resp3})
+    } catch (error) {
+        console.log('Error: \n', error) 
+    }
+})
+
+app.post('/approve-withdrawal', async (req, res) => {
+    try {
+        const { wid, type } = req.body;
+        console.log(req.body);
+
+        let result = await client.connect()
+        let db = result.db('test');
+        let collection = db.collection('withdrawals');
+
+        if(type) {
+            await collection.updateOne({ wid }, {
+                $set: {
+                    status: 'Success'
+                }
+            })
+        } else {
+            await collection.updateOne({ wid }, {
+                $set: {
+                    status: 'Failed'
+                }
+            })
+        }
+
+        return res.status(200).send({ success: true})
+    } catch (error) {
+        
+    }
+})
+
+app.post('/fetch-user-data', async (req, res) => {
+    try {
+        const { id, uid } = req.body;
+        console.log(req.body);
+
+        let result = await client.connect()
+        let db = result.db('test');
+        let collection = db.collection('users');
+        let collection2 = db.collection('balances');
+        let collection3 = db.collection('withdrawals');
+        let collection4 = db.collection('deposits');
+        let collection5 = db.collection('referrals');
+        let collection6 = db.collection('totalreferrals');
+        let collection7 = db.collection('agents')
+
+        let user = await collection.findOne({ id: uid })
+
+        if(user) {
+            let balance = await collection2.findOne({ id: uid})
+            let withdrawals = await collection3.aggregate([{ $match: {id: uid}}, { $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
+            let deposits = await collection4.aggregate([{ $match: { id: uid } }, { $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
+            let referrals = await collection5.aggregate([{ $match: {id: uid}}, { $group: { _id: '$level', amount: { $sum: "$bonus"} }}]).toArray()
+            let agent = await collection7.findOne({ id: uid})
+            let resp = await collection6.findOne({ id: uid})
+
+            console.log(referrals, '\n', deposits, '\n', withdrawals)
+            return res.status(200).send({ success: true, phone: user.phoneNumber, referrer: !user.lv1 ? '-' : user.lv1, mb: balance.mainBalance?.toFixed(2), db: balance.depositBalance?.toFixed(2), bb: balance.bonusBalance?.toFixed(2), rb: balance.referralBalance?.toFixed(2), agent: agent ? agent.level : 0, t1: resp.lv1, t2: resp.lv2, t3: resp.lv3, i1: referrals[0] ? referrals[0].amount : 0, i2: referrals[1] ? referrals[1].amount : 0, i3: referrals[2] ? referrals[0].amount : 0, withdrawals: withdrawals[0] ? withdrawals[0].amount : 0, deposits: deposits[0] ? deposits[0].amount : 0})
+        }
+
+        return res.status(400).send({ success: false, error: 'User not exists'})
+    } catch (error) {
+        console.log(error)
     }
 })
