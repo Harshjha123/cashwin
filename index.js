@@ -1242,7 +1242,7 @@ app.post('/claimTask', async (req, res) => {
 
         const user = await userModel.findOne({ userToken: id })
         const t = await taskModel.findOne({ id: user.id })
-        const deposit = await depositModel.find({ id: user.id, status: true })
+        const deposit = await depositModel.find({ id: user.id, status: 'Success' })
         const invite = await totalRefModel.findOne({ id: user.id })
         const order = await orderBookModel.findOne({ id: user.id })
 
