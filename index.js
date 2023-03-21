@@ -40,6 +40,7 @@ const limiter = rateLimit({
 
 //mongodb+srv://besefi2733:B6HB30t3nIbK5rGj@cashwin.a4fi5pi.mongodb.net/?retryWrites=true&w=majority
 //mongodb+srv://biomeeadmin:jcxfYgWQKLOzxzhn@cluster0.xgynqbe.mongodb.net/?retryWrites=true&w=majority
+//mongodb+srv://cashwinpro:B6HB30t3nIbK5rGj@cashwin.f23y84h.mongodb.net/?retryWrites=true&w=majority
 const uri = "mongodb+srv://cashwinpro:B6HB30t3nIbK5rGj@cashwin.f23y84h.mongodb.net/?retryWrites=true&w=majority"
 mongoose.connect(uri).then(console.log('connected'))
 
@@ -294,7 +295,7 @@ function randomString(length, chars) {
 }
 
 async function fetchUrl() {
-    await fast2sms.sendMessage({ authorization: 'lwA36rKVqxyJ9OjImahC5YUQuegHk0EBtNpGzfonvSRPDdi8cWCl8JU39HmQykso57zIShERvdOGWBfZ', message: 'My First Message', numbers: ['6202565956']}).then((response) => {
+    await fast2sms.sendMessage({ authorization: 'lwA36rKVqxyJ9OjImahC5YUQuegHk0EBtNpGzfonvSRPDdi8cWCl8JU39HmQykso57zIShERvdOGWBfZ', message: 'My First Message', numbers: ['6202565956'] }).then((response) => {
         console.log('Data: ', response)
     }).catch((error) => {
         console.log(error)
@@ -315,14 +316,14 @@ app.post('/send-otp', limiter, async (req, res) => {
     try {
         const { phoneNumber } = req.body;
 
-        if(phoneNumber.length !== 10) return res.status(400).send({ success: false, error: 'Invalid phone number'})
+        if (phoneNumber.length !== 10) return res.status(400).send({ success: false, error: 'Invalid phone number' })
         var val = Math.floor(1000 + Math.random() * 9000);
 
-        await fast2sms.sendMessage({authorization: 'lwA36rKVqxyJ9OjImahC5YUQuegHk0EBtNpGzfonvSRPDdi8cWCl8JU39HmQykso57zIShERvdOGWBfZ', message: val, numbers: [phoneNumber] })
-        let resp = await otpModel.findOne({ phone: parseFloat(phoneNumber)})
+        await fast2sms.sendMessage({ authorization: 'lwA36rKVqxyJ9OjImahC5YUQuegHk0EBtNpGzfonvSRPDdi8cWCl8JU39HmQykso57zIShERvdOGWBfZ', message: val, numbers: [phoneNumber] })
+        let resp = await otpModel.findOne({ phone: parseFloat(phoneNumber) })
 
-        if(resp) {
-            await otpModel.deleteOne({ phone: parseFloat(phoneNumber)})
+        if (resp) {
+            await otpModel.deleteOne({ phone: parseFloat(phoneNumber) })
         }
 
         let otp = new otpModel({
@@ -350,7 +351,7 @@ app.post('/register', limiter, async (req, res) => {
         let collection4 = db.collection('totalreferrals');
         let collection9 = db.collection('otps');
 
-        let resp = await collection9.findOne({ phone: parseFloat(phoneNumber)})
+        let resp = await collection9.findOne({ phone: parseFloat(phoneNumber) })
         if (!resp) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
         if (resp.otp !== parseFloat(otp)) return res.status(400).send({ success: false, error: 'Otp not matched.' })
 
@@ -371,7 +372,7 @@ app.post('/register', limiter, async (req, res) => {
         const uid = randomString(8, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
         const token = crypto.randomBytes(64).toString('hex')
         let per = ("0" + new Date().getDate()).slice(-2) + "" + ("0" + new Date().getMonth() + 1).slice(-2) + "" + ("0" + new Date().getFullYear()).slice(-4)
-        
+
         let d = new Date()
         let y = ("0" + d.getFullYear()).slice(-2)
         let m = ("0" + d.getMonth() + 1).slice(-2)
@@ -412,9 +413,9 @@ app.post('/register', limiter, async (req, res) => {
         const balance = balanceModel({
             id: uid,
             mainBalance: 0,
-            depositBalance: 25,
+            depositBalance: 10,
             refBalance: 0,
-            bonusBalance: 25
+            bonusBalance: 40
         })
 
         const checkInData = new checkInModel({
@@ -482,7 +483,7 @@ app.post('/register', limiter, async (req, res) => {
         fi.save()
         o.save()
 
-        await otpModel.deleteOne({ phone: parseFloat(phoneNumber)})
+        await otpModel.deleteOne({ phone: parseFloat(phoneNumber) })
 
         if (lv1) {
             collection3.findOneAndUpdate({ id: lv1 }, { $inc: { refBalance: 1 } })
@@ -541,14 +542,14 @@ app.post('/balance', async (req, res) => {
         let collection = db.collection('users');
         let collection2 = db.collection('balances');
 
-        let resp = await collection.findOne({ userToken: id})
-        if(!resp) return res.status(400).send({ success: false, message: 'Failed to fetch account'})
+        let resp = await collection.findOne({ userToken: id })
+        if (!resp) return res.status(400).send({ success: false, message: 'Failed to fetch account' })
 
         let resp2 = await collection2.findOne({ id: resp?.id })
         return res.status(200).send({ success: true, withdraw: resp2?.mainBalance.toFixed(2), bonus: resp2?.bonusBalance.toFixed(2), deposit: resp2?.depositBalance.toFixed(2), referral: resp2?.refBalance.toFixed(2), uid: resp?.id })
     } catch (error) {
         console.log('Error: \n', error);
-        return res.status(400).send({ success: false, message: 'Failed to fetch balance'})
+        return res.status(400).send({ success: false, message: 'Failed to fetch balance' })
     }
 });
 
@@ -871,7 +872,7 @@ app.post('/withdraw', limiter, async (req, res) => {
         const card = await addCardModel.findOne({ id: user.id, isActive: true });
         const deposit = await depositModel.findOne({ id: user.id, status: 'Success' });
 
-        if(!deposit) return res.status(400).send({ success: false, error: 'You need to make deposit of atleast 30rs for first withdrawal.'})
+        if (!deposit) return res.status(400).send({ success: false, error: 'You need to make deposit of atleast 30rs for first withdrawal.' })
         if (amount < 100) return res.status(400).send({ success: false, error: 'Unable to make withdrawal request' })
         if (balance.mainBalance < parseFloat(amount)) return res.status(400).send({ success: false, error: 'Insufficient Balance' })
 
@@ -1084,7 +1085,7 @@ app.post('/deposit', async (req, res) => {
         })
 
         deposit.save();
-        res.status(200).send({ success: true, tid})
+        res.status(200).send({ success: true, tid })
 
         setTimeout(async function () {
             let resp2 = await collection2.findOne({ tid })
@@ -1106,7 +1107,7 @@ app.post('/deposit', async (req, res) => {
 
 app.post('/fetch-tid', async (req, res) => {
     try {
-        const { id, tid} = req.body;
+        const { id, tid } = req.body;
         console.log(req.body)
 
         let result = await client.connect()
@@ -1115,17 +1116,17 @@ app.post('/fetch-tid', async (req, res) => {
         let collection2 = db.collection('deposits');
 
         let resp = await collection.findOne({ userToken: id })
-        let resp2 = await collection2.findOne({ id: resp.id, tid})
+        let resp2 = await collection2.findOne({ id: resp.id, tid })
 
         console.log(resp2)
 
-        if(resp2 && resp2.status === 'Pending') {
-            return res.status(200).send({ success: true, amount: resp2.amount})
+        if (resp2 && resp2.status === 'Pending') {
+            return res.status(200).send({ success: true, amount: resp2.amount })
         }
 
-        return res.status(400).send({ success: false, error: 'Invalid or Expired Transaction id'})
+        return res.status(400).send({ success: false, error: 'Invalid or Expired Transaction id' })
     } catch (error) {
-        
+
     }
 })
 
@@ -1151,7 +1152,7 @@ app.post('/on-deposit', limiter, async (req, res) => {
             'sec-fetch-site': 'same-site',
             'token': '7dc99f0035b044998bcfff412be095dc', //your login token 
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.63'
-        }; 
+        };
 
         let result = await client.connect()
         let db = result.db('test')
@@ -1164,14 +1165,14 @@ app.post('/on-deposit', limiter, async (req, res) => {
 
         let resp = await collection.findOne({ userToken: id })
         let resp2 = await collection2.findOne({ tid, id: resp.id })
-        if(resp2?.status !== 'Pending') return res.status(400).send({ success: false, error: 'Order has been completed or failed. Please create a new one.'})
+        if (resp2?.status !== 'Pending') return res.status(400).send({ success: false, error: 'Order has been completed or failed. Please create a new one.' })
 
         let resp4 = await collection2.findOne({ orderId: orderId })
         let resp3 = await collection6.findOne({ id: resp.id })
 
         if (resp4) return res.status(400).send({ success: false, error: 'Invalid or order id has been used already.' })
 
-        let response = await axios.get(url, {params, headers})
+        let response = await axios.get(url, { params, headers })
         let data2 = response.data?.data?.transactions
 
         let respo = data2.filter(x => x.bankReferenceNo === orderId.toString())
@@ -1179,10 +1180,10 @@ app.post('/on-deposit', limiter, async (req, res) => {
         console.log('Response: ', respo)
         let data = respo[0]
 
-        if (!data || data.type !== 'PAYMENT_RECV' || data.status !== 'SUCCESS') return res.status(400).send({ success: false, error: 'Failed to add balance.' }) 
+        if (!data || data.type !== 'PAYMENT_RECV' || data.status !== 'SUCCESS') return res.status(400).send({ success: false, error: 'Failed to add balance.' })
         if (parseFloat(data.amount) < 30) return res.status(400).send({ success: false, error: 'Amount must be greater than 30' })
 
-        await collection2.findOneAndUpdate({ id: resp.id, tid}, {
+        await collection2.findOneAndUpdate({ id: resp.id, tid }, {
             $set: {
                 amount: data.amount,
                 status: 'Success',
@@ -1205,7 +1206,32 @@ app.post('/on-deposit', limiter, async (req, res) => {
 
         fi.save()
 
-        await collection3.findOneAndUpdate({ id: resp.id }, { $inc: { depositBalance: parseFloat(data.amount), bonusBalance: parseFloat(data.amount) } })
+        let p = 0;
+        if (parseFloat(data.amount) > 49 && parseFloat(data.amount) < 100) {
+            p = 5
+        } else {
+            if (parseFloat(data.amount) > 99 && parseFloat(data.amount) < 250) {
+                p = 10
+            } else {
+                if (parseFloat(data.amount) > 249 && parseFloat(data.amount) < 500) {
+                    p = 25
+                } else {
+                    if (parseFloat(data.amount) > 499 && parseFloat(data.amount) < 1000) {
+                        p = 50
+                    } else {
+                        if (parseFloat(data.amount) > 999 && parseFloat(data.amount) < 2500) {
+                            p = 100
+                        } else {
+                            if (parseFloat(data.amount) > 2499) {
+                                p = 500
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        await collection3.findOneAndUpdate({ id: resp.id }, { $inc: { depositBalance: parseFloat(data.amount), bonusBalance: parseFloat(data.amount) * (p / 100) } })
         await collection6.findOneAndUpdate({ id: resp.id }, { $inc: { deposit: parseFloat(data.amount) } })
 
         await collection4.updateMany({ user: resp?.id }, {
@@ -1388,6 +1414,31 @@ app.post('/getDailyRecord', async (req, res) => {
         return res.status(400).send({ success: false, error: 'Something went wrong' })
     }
 });
+
+app.post('/transfer-ref-bal', async (req, res) => {
+    try {
+        const { id } = req.body;
+        console.log(req.body);
+
+        const user = await userModel.findOne({ userToken: id })
+        const resp = await balanceModel.findOne({ id: user.id })
+
+        if(resp.refBalance < 30) return res.status(400).send({ success: false, error: 'Min transfer is Rs100'})
+
+        await balanceModel.updateOne({ id: user.id}, {
+            $set: {
+                refBalance: 0
+            },
+            $inc: {
+                mainBalance: resp.refBalance
+            }
+        })
+
+        return res.status(200).send({ success: true})
+    } catch (error) {
+        
+    }
+})
 
 
 async function withdraw() {
@@ -1627,7 +1678,7 @@ timer.addEventListener('secondsUpdated', function () {
     console.log(a)
     io.sockets.to('fastParity').emit('counter', { counter: a });
 
-    if(a === 3) {
+    if (a === 3) {
         fastParityPeriod().then(response => {
             let roomId = parseFloat(response[0]?.id)
             updateFastParityPeriod(roomId).then((response2) => {
@@ -1636,9 +1687,9 @@ timer.addEventListener('secondsUpdated', function () {
             })
         })
     } else {
-        if(a === 0) {
+        if (a === 0) {
             console.log(parityResult, updatedParityId)
-            io.sockets.to('fastParity').emit('result', { result: parityResult})
+            io.sockets.to('fastParity').emit('result', { result: parityResult })
             io.sockets.to('fastParity').emit('period', { period: updatedParityId });
             result = []
         }
@@ -1649,13 +1700,13 @@ async function getParityResult(id) {
     let result = await client.connect()
     let db = result.db('test');
     let collection = db.collection('fastparityorders');
-    
+
     let resp = await collection.aggregate([{ $match: { period: id, selectType: 'number' } }, { $group: { _id: '$select', amount: { $sum: "$amount" } } }]).toArray()
     let resp2 = await collection.aggregate([{ $match: { period: id, selectType: 'color' } }, { $group: { _id: '$select', amount: { $sum: "$amount" } } }]).toArray()
 
     function filterResp(v) {
         let a = resp.filter(x => x._id === v)
-        if(!a[0]) {
+        if (!a[0]) {
             return 0
         } else {
             return a[0].amount * 9
@@ -1667,7 +1718,7 @@ async function getParityResult(id) {
         if (!a[0]) {
             return 0
         } else {
-            if(v === 'V') {
+            if (v === 'V') {
                 return a[0].amount * 4.5
             } else {
                 return a[0].amount * 2
@@ -1761,7 +1812,7 @@ async function updateFastParityPeriod(id) {
                 image: 'https://res.cloudinary.com/fiewin/image/upload/images/FastParityIncome.png'
             })
 
-            if(al) {
+            if (al) {
                 fi.save()
             }
 
@@ -1781,13 +1832,11 @@ async function updateFastParityPeriod(id) {
         nData.save()
 
         console.log(m)
-        return { result: m, id: newId};
+        return { result: m, id: newId };
     } catch (error) {
         console.log(error)
     }
 }
-
-
 
 app.post('/placeSweeperBet', async (req, res) => {
     try {
@@ -2060,13 +2109,13 @@ app.post('/fetch-panel-data', async (req, res) => {
         let collection2 = db.collection('deposits');
 
         let resp = await collection.aggregate([{ $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
-        let resp2 = await collection2.aggregate([{ $match: { status: 'Success'}}, { $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
-        let resp3 = await collection.find({ status: 'Pending'}).toArray()
+        let resp2 = await collection2.aggregate([{ $match: { status: 'Success' } }, { $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
+        let resp3 = await collection.find({ status: 'Pending' }).toArray()
         let user = await collection3.find({}).toArray()
 
-        return res.status(200).send({ users: !user[0] ? 0 : user.length, withdrawals: !resp[0] ? 0 : resp[0].amount, deposits: !resp2[0] ? 0 : resp2[0].amount, records: resp3})
+        return res.status(200).send({ users: !user[0] ? 0 : user.length, withdrawals: !resp[0] ? 0 : resp[0].amount, deposits: !resp2[0] ? 0 : resp2[0].amount, records: resp3 })
     } catch (error) {
-        console.log('Error: \n', error) 
+        console.log('Error: \n', error)
     }
 })
 
@@ -2079,7 +2128,7 @@ app.post('/approve-withdrawal', async (req, res) => {
         let db = result.db('test');
         let collection = db.collection('withdrawals');
 
-        if(type) {
+        if (type) {
             await collection.updateOne({ wid }, {
                 $set: {
                     status: 'Success'
@@ -2093,9 +2142,9 @@ app.post('/approve-withdrawal', async (req, res) => {
             })
         }
 
-        return res.status(200).send({ success: true})
+        return res.status(200).send({ success: true })
     } catch (error) {
-        
+
     }
 })
 
@@ -2116,19 +2165,19 @@ app.post('/fetch-user-data', async (req, res) => {
 
         let user = await collection.findOne({ id: uid })
 
-        if(user) {
-            let balance = await collection2.findOne({ id: uid})
-            let withdrawals = await collection3.aggregate([{ $match: {id: uid}}, { $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
+        if (user) {
+            let balance = await collection2.findOne({ id: uid })
+            let withdrawals = await collection3.aggregate([{ $match: { id: uid } }, { $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
             let deposits = await collection4.aggregate([{ $match: { id: uid } }, { $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
-            let referrals = await collection5.aggregate([{ $match: {id: uid}}, { $group: { _id: '$level', amount: { $sum: "$bonus"} }}]).toArray()
-            let agent = await collection7.findOne({ id: uid})
-            let resp = await collection6.findOne({ id: uid})
+            let referrals = await collection5.aggregate([{ $match: { id: uid } }, { $group: { _id: '$level', amount: { $sum: "$bonus" } } }]).toArray()
+            let agent = await collection7.findOne({ id: uid })
+            let resp = await collection6.findOne({ id: uid })
 
             console.log(referrals, '\n', deposits, '\n', withdrawals)
-            return res.status(200).send({ success: true, phone: user.phoneNumber, referrer: !user.lv1 ? '-' : user.lv1, mb: balance.mainBalance?.toFixed(2), db: balance.depositBalance?.toFixed(2), bb: balance.bonusBalance?.toFixed(2), rb: balance.referralBalance?.toFixed(2), agent: agent ? agent.level : 0, t1: resp.lv1, t2: resp.lv2, t3: resp.lv3, i1: referrals[0] ? referrals[0].amount : 0, i2: referrals[1] ? referrals[1].amount : 0, i3: referrals[2] ? referrals[0].amount : 0, withdrawals: withdrawals[0] ? withdrawals[0].amount : 0, deposits: deposits[0] ? deposits[0].amount : 0})
+            return res.status(200).send({ success: true, phone: user.phoneNumber, referrer: !user.lv1 ? '-' : user.lv1, mb: balance.mainBalance?.toFixed(2), db: balance.depositBalance?.toFixed(2), bb: balance.bonusBalance?.toFixed(2), rb: balance.referralBalance?.toFixed(2), agent: agent ? agent.level : 0, t1: resp.lv1, t2: resp.lv2, t3: resp.lv3, i1: referrals[0] ? referrals[0].amount : 0, i2: referrals[1] ? referrals[1].amount : 0, i3: referrals[2] ? referrals[0].amount : 0, withdrawals: withdrawals[0] ? withdrawals[0].amount : 0, deposits: deposits[0] ? deposits[0].amount : 0 })
         }
 
-        return res.status(400).send({ success: false, error: 'User not exists'})
+        return res.status(400).send({ success: false, error: 'User not exists' })
     } catch (error) {
         console.log(error)
     }
