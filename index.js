@@ -303,7 +303,7 @@ async function fetchUrl() {
 
 //fetchUrl()
 
-app.get('/', limiter, async (req, res) => {
+app.get('/', async (req, res) => {
     try {
         res.json({ status: 'live' })
     } catch (error) {
