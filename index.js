@@ -1190,6 +1190,21 @@ app.post('/on-deposit', limiter, async (req, res) => {
                 app: data.payerHandle
             }
         })
+
+        let date = new Date();
+        let l = ("0" + (date.getMonth() + 1)).slice(-2) + '/' + ("0" + (date.getDate())).slice(-2) + ' ' + ("0" + (date.getHours())).slice(-2) + ':' + ("0" + (date.getMinutes())).slice(-2)
+
+        const fi = new financialModel({
+            id: resp.id,
+            title: 'Deposit',
+            date: l,
+            amount: data.amount,
+            type: true,
+            image: 'https://res.cloudinary.com/fiewin/image/upload/images/rechargeOrder.png'
+        })
+
+        fi.save()
+
         await collection3.findOneAndUpdate({ id: resp.id }, { $inc: { depositBalance: parseFloat(data.amount), bonusBalance: parseFloat(data.amount) } })
         await collection6.findOneAndUpdate({ id: resp.id }, { $inc: { deposit: parseFloat(data.amount) } })
 
