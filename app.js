@@ -88,3 +88,33 @@ async function updateFastParityPeriod(id) {
         console.log(error)
     }
 }
+
+
+
+      <BrowserRouter>
+        {user ? (
+          <Routes>
+            <Route path='/' element={<Home />} />
+            <Route path='/invite' element={<Invite />} />
+            <Route path='/my' element={<My />} />
+            <Route path='/recharge' element={<Recharge />} />
+            <Route path='/recharge2' element={<RechargeScreen />} />
+            <Route path='/task' element={<Task />} />
+            <Route path='/check-in' element={<Checkin />} />
+            <Route path='/withdraw' element={<Withdraw />} />
+            <Route path='/agent-commission' element={<AgentIncome />} />
+            <Route path='/daily-rec' element={<Commission />} />
+            <Route path='/financial-records' element={<FinancialRecords />} />
+            <Route path='/recharge-records' element={<RechargeRecords />} />
+            <Route path='/team' element={<Team />} />
+            <Route path='/game/fast-parity' element={<FastParity />} />
+            <Route path='/login' element={<Login />} />
+            <Route path='/register' element={<Register />} />
+          </Routes>
+        ) : (
+          <Routes>
+            <Route path='*' element={<Login />} />
+            <Route path='/register' element={<Register />} />
+          </Routes>
+        )}
+      </BrowserRouter>

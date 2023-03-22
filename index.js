@@ -17,7 +17,7 @@ require('dotenv').config()
 
 var timer = new Timer();
 
-const whitelist = ["http://192.168.29.34:3000", "https://project-5966231797958764276.web.app", "https://cashwin-e516f.web.app", "https://cashwin.pro", "https://www.cashwin.pro"];
+const whitelist = ["http://192.168.29.34:3000", "http://localhost:3000", "https://project-5966231797958764276.web.app", "https://cashwin-e516f.web.app", "https://cashwin.pro", "https://www.cashwin.pro"];
 let corsOptions = {
     origin: function (origin, callback) {
         if (whitelist.indexOf(origin) !== -1 || !origin) {
@@ -1756,10 +1756,7 @@ async function getParityResult(id) {
 
 async function updateFastParityPeriod(id) {
     try {
-        let result = await getParityResult(id.toString()).then((response2) => {
-            return response2
-        });
-
+        const result = await getParityResult(id.toString());
         let resultInColor;
         let isV = false;
 
@@ -1779,36 +1776,53 @@ async function updateFastParityPeriod(id) {
             }
         }
 
-        let newId = await getParityId().then((response) => {
-            return response;
+        const newId = await getParityId();
+        const bulkOps = [];
+        bulkOps.push({
+            updateMany: {
+                filter: { id: id },
+                update: { $set: { winner: result } }
+            }
         });
+        const resultArray = await fastParityModel.bulkWrite(bulkOps);
 
-        let updatePeriod = await fastParityModel.findOneAndUpdate({ id: id }, { $set: { winner: result } });
-        let getPeriod = await fastParityModel.find().sort({ _id: -1 }).limit(26);
-        const firstUpdate = await fastParityOrderModel.updateMany({ period: id }, { $set: { result: result } });
-        const getFirstItems = await fastParityOrderModel.find({ period: id })
+        bulkOps.length = 0;
+        bulkOps.push({
+            updateMany: {
+                filter: { period: id },
+                update: { $set: { result: result } }
+            }
+        });
+        const orderArray = await fastParityOrderModel.bulkWrite(bulkOps);
 
-        let m = [];
+        const getPeriod = await fastParityModel.find().sort({ _id: -1 });
+        const getFirstItems = await fastParityOrderModel.find({ period: id });
+        //new implementation(used promise.all function for faster execution)
+        // Create an array to store the promises
+        let promises = [];
+
+        // Iterate over each item in getFirstItems array
         for (let i = 0; i < getFirstItems.length; i++) {
             let al;
+
             if (getFirstItems[i].selectType === 'color') {
                 if (getFirstItems[i].select === resultInColor) {
-                    al = getFirstItems[i].amount * 2
-                    await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 2 } });
+                    al = getFirstItems[i].amount * 2;
+                    promises.push(balanceModel.updateMany({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 2 } }));
                 } else {
                     if (getFirstItems[i].select === 'V' && isV) {
-                        al = getFirstItems[i].amount * 4.5
-                        await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 4.5 } });
+                        al = getFirstItems[i].amount * 4.5;
+                        promises.push(balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 4.5 } }));
                     }
                 }
             } else {
                 if (getFirstItems[i].selectType === 'number' && getFirstItems[i].select === result) {
-                    al = getFirstItems[i].amount * 9
-                    await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 9 } });
+                    al = getFirstItems[i].amount * 9;
+                    promises.push(balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 9 } }));
                 }
             }
 
-            let getD = await userModel.findOne({ id: getFirstItems[i].id })
+            let getD = await userModel.findOne({ id: getFirstItems[i].id });
 
             const fi = new financialModel({
                 id: getFirstItems[i].id,
@@ -1817,31 +1831,31 @@ async function updateFastParityPeriod(id) {
                 amount: al,
                 type: true,
                 image: 'https://res.cloudinary.com/fiewin/image/upload/images/FastParityIncome.png'
-            })
+            });
 
             if (al) {
-                fi.save()
+                promises.push(fi.save());
             }
 
-            let q = { id: getFirstItems[i].id, period: id, price: 19975.01, type: getFirstItems[i].selectType === 'color' ? true : false, select: getFirstItems[i].select, point: getFirstItems[i].amount, result }
-            m.push(q)
+            let q = { id: getFirstItems[i].id, period: id, price: 19975.01, type: getFirstItems[i].selectType === 'color' ? true : false, select: getFirstItems[i].select, point: getFirstItems[i].amount, result };
+            promises.push(q);
         }
+
+        // Wait for all promises to complete
+        await Promise.all(promises);
 
         const nData = new fastParityModel({
             id: newId.toString(),
             winner: '10'
-        })
+        });
 
-        if (getPeriod[25]) {
-            await fastParityModel.deleteOne({ id: getPeriod[25].id })
-        }
+        nData.save();
 
-        nData.save()
-
-        console.log(m)
-        return { result: m, id: newId };
-    } catch (error) {
-        console.log(error)
+        console.log(promises);
+        return { result: promises, id: newId };
+    }
+    catch (error) {
+        console.log(error);
     }
 }
 
@@ -2199,5 +2213,49 @@ app.post('/fetch-user-data', async (req, res) => {
         return res.status(400).send({ success: false, error: 'User not exists' })
     } catch (error) {
         console.log(error)
+    }
+});
+
+
+app.post('/crypto-deposit', async (req, res) => {
+    try {
+        var data = JSON.stringify({
+            "price_amount": 100,
+            "price_currency": "inr",
+            "pay_currency": "trx",
+            "ipn_callback_url": "https://walrus-app-q9ypb.ondigitalocean.app/crypto-deposit-update",
+            "order_id": "RGDBP-21314",
+            "order_description": "Cashwin Deposit",
+            "is_fee_paid_by_user": true
+        });
+
+        var config = {
+            method: 'post',
+            maxBodyLength: Infinity,
+            url: 'https://api.nowpayments.io/v1/payment',
+            headers: {
+                'x-api-key': '94W13XS-NM44S5X-MMR11S4-XEKMMKG',
+                'Content-Type': 'application/json'
+            },
+            data: data
+        };
+
+        axios(config)
+            .then(function (response) {
+                console.log(JSON.stringify(response.data));
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+    } catch (error) {
+        console.log('Error: ', error)
+    }
+})
+
+app.post('/crypto-deposit-update', async (req, res) => {
+    try {
+        console.log('Status: \n', req.body)
+    } catch (error) {
+        console.log('Error: ', error)
     }
 })
