@@ -867,10 +867,17 @@ app.post('/withdraw', limiter, async (req, res) => {
         const { id, amount } = req.body;
         console.log(req.body)
 
+        let date = new Date();
+
         const user = await userModel.findOne({ userToken: id });
         const balance = await balanceModel.findOne({ id: user.id });
         const card = await addCardModel.findOne({ id: user.id, isActive: true });
         const deposit = await depositModel.findOne({ id: user.id, status: 'Success' });
+        const v = await withdrawalModel.findOne({ id: user.id, status: 'Success', period: date.getDate() + '' + date.getMonth() + '' + date.getFullYear() })
+        const v2 = await withdrawalModel.findOne({ id: user.id, status: 'Pending', period: date.getDate() + '' + date.getMonth() + '' + date.getFullYear() })
+
+        if(v || v2) return res.status(400).send({ success: false, error: 'You can withdraw max 1 time in a day'})
+        if(amount > 1000) return res.status(400).send({ success: false, error: 'You can withdraw max 1000 at a time'})
 
         if (!deposit) return res.status(400).send({ success: false, error: 'You need to make deposit of atleast 30rs for first withdrawal.' })
         if (amount < 100) return res.status(400).send({ success: false, error: 'Unable to make withdrawal request' })
@@ -885,7 +892,7 @@ app.post('/withdraw', limiter, async (req, res) => {
 
         if (!card) return res.status(400).send({ success: false, error: 'UPI not added' })
 
-        let date = new Date();
+        
         let l = ("0" + (date.getMonth() + 1)).slice(-2) + '/' + ("0" + (date.getDate())).slice(-2) + ' ' + ("0" + (date.getHours())).slice(-2) + ':' + ("0" + (date.getMinutes())).slice(-2)
         let rNumber = Math.floor(Math.random() * 10000)
         let eDate = date.getFullYear() + '' + ("0" + date.getMonth()).slice(-2) + '' + ("0" + date.getDate()).slice(-2) + '' + ("0" + date.getHours()).slice(-2) + '' + ("0" + date.getMinutes()).slice(-2) + '' + ("0" + date.getSeconds()).slice(-2) + '' + ("0" + date.getMilliseconds()).slice(-2) + '' + rNumber
@@ -1683,7 +1690,7 @@ timer.addEventListener('secondsUpdated', function () {
             let roomId = parseFloat(response[0]?.id)
             updateFastParityPeriod(roomId).then((response2) => {
                 parityResult = response2?.result
-                updatedParityId = response2.id
+                updatedParityId = response2?.id
             })
         })
     } else {
