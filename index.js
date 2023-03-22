@@ -1682,7 +1682,7 @@ timer.addEventListener('secondsUpdated', function () {
         fastParityPeriod().then(response => {
             let roomId = parseFloat(response[0]?.id)
             updateFastParityPeriod(roomId).then((response2) => {
-                parityResult = response2.result
+                parityResult = response2?.result
                 updatedParityId = response2.id
             })
         })
@@ -2127,6 +2127,10 @@ app.post('/approve-withdrawal', async (req, res) => {
         let result = await client.connect()
         let db = result.db('test');
         let collection = db.collection('withdrawals');
+        let collection2 = db.collection('balances')
+
+        let user = await collection.findOne({ wid})
+        let resp = await collection2.findOne({ id: user.id})
 
         if (type) {
             await collection.updateOne({ wid }, {
@@ -2135,6 +2139,14 @@ app.post('/approve-withdrawal', async (req, res) => {
                 }
             })
         } else {
+            let inc = user.amount > 1500 ? user.amount * (2 / 100) : 30
+
+            await collection2.updateOne({ id: user.id }, {
+                $inc: {
+                    mainBalance: user.amount + inc
+                }
+            })
+
             await collection.updateOne({ wid }, {
                 $set: {
                     status: 'Failed'
