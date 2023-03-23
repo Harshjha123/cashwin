@@ -2217,7 +2217,7 @@ app.post('/fetch-user-data', async (req, res) => {
 });
 
 
-app.post('/crypto-deposit', async (req, res) => {
+app.get('/crypto-deposit', async (req, res) => {
     try {
         var data = JSON.stringify({
             "price_amount": 100,
