@@ -2014,12 +2014,30 @@ app.post('/claimBox', async (req, res) => {
 
         if (!response2?.board?.includes(box)) return res.status(400).send({ success: false, error: 'Failed to mine' })
 
+        function get_random(list) {
+            return list[Math.floor((Math.random() * list.length))];
+        }
+
         let bombNo = response2?.bomb;
         if (bombNo === box) {
             await collection2.findOneAndUpdate({ id: response.id, betId: id }, {
                 $set: {
                     status: true,
                     win: false
+                }
+            })
+
+            return res.status(200).send({ success: true, bomb: true, box, board: response2.board, checked: response2.checked, amount: response2.amount?.toFixed(2) })
+        }
+
+        let newBomb2 = get_random(response2?.unchecked)
+
+        if(newBomb2 === box) {
+            await collection2.findOneAndUpdate({ id: response.id, betId: id }, {
+                $set: {
+                    status: true,
+                    win: false,
+                    bomb: newBomb2
                 }
             })
 
@@ -2034,10 +2052,6 @@ app.post('/claimBox', async (req, res) => {
 
         if (index > -1) { // only splice array when item is found
             a.splice(index, 1); // 2nd parameter means remove one item only
-        }
-
-        function get_random(list) {
-            return list[Math.floor((Math.random() * list.length))];
         }
 
         let newBomb = get_random(a)
