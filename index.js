@@ -2031,8 +2031,9 @@ app.post('/claimBox', async (req, res) => {
         }
 
         let newBomb2 = get_random(response2?.unchecked)
+        let needBomb = get_random(true, false, false)
 
-        if(newBomb2 === box) {
+        if(newBomb2 === box && needBomb === true) {
             await collection2.findOneAndUpdate({ id: response.id, betId: id }, {
                 $set: {
                     status: true,
