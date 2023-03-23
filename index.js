@@ -1839,13 +1839,18 @@ async function updateFastParityPeriod(id) {
 
 app.post('/update-parity-record', limiter, async (req, res) => {
     try {
-        const { pid, uid } = req.body;
+        const { pid, token } = req.body;
         console.log(req.body)
 
+        let u = await userModel.findOne({ userToken: token })
+        let uid = u.id
+
         let resp = await fastParityModel.findOne({ id: pid })
+        if(!resp[0]) return res.status(400).send({ success: false, error: 'Invalid period id.'})
+
         let result = resp?.winner
 
-        if (result === 10) return console.log({ success: false, message: 'Period result not out!' })
+        if (result === 10) return res.status(400).send({ success: false, error: 'Period result not out!' })
 
         let resultInColor;
         let isV = false;
@@ -1867,10 +1872,10 @@ app.post('/update-parity-record', limiter, async (req, res) => {
         }
 
         let records = await fastParityOrderModel.find({ id: uid, period: pid })
-        if (!records[0]) return console.log({ success: false, error: 'Please make a bet first' })
+        if (!records[0]) return res.status(400).send({ success: false, error: 'Please make a bet first' })
 
         let filter = records.filter(x => x.result === undefined)
-        if (!filter[0]) return console.log({ success: false, error: 'Your bet records are already updated' })
+        if (!filter[0]) return res.status(400).send({ success: false, error: 'Your bet records are already updated' })
 
         for (let i = 0; i < filter.length; i++) {
             let al;
