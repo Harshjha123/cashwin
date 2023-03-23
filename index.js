@@ -1846,6 +1846,7 @@ app.post('/update-parity-record', limiter, async (req, res) => {
         let uid = u.id
 
         let resp = await fastParityModel.findOne({ id: pid })
+        console.log('ID: ', resp)
         if(!resp[0]) return res.status(400).send({ success: false, error: 'Invalid period id.'})
 
         let result = resp?.winner
