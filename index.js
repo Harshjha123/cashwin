@@ -1,7 +1,7 @@
 const express = require('express');
 const rateLimit = require("express-rate-limit");
 const app = express();
-
+const NowPaymentsApi = require('@nowpaymentsio/nowpayments-api-js');
 const http = require('http');
 const { Server } = require("socket.io");
 const cors = require('cors')
@@ -301,6 +301,8 @@ async function fetchUrl() {
         console.log(error)
     })
 }
+
+const NPApi = new NowPaymentsApi({ apiKey: '94W13XS-NM44S5X-MMR11S4-XEKMMKG' }) 
 
 //fetchUrl()
 
@@ -2220,36 +2222,26 @@ app.post('/fetch-user-data', async (req, res) => {
 
 app.get('/crypto-deposit', async (req, res) => {
     try {
-        var data = JSON.stringify({
-            "price_amount": 100,
-            "price_currency": "inr",
-            "pay_currency": "trx",
-            "ipn_callback_url": "https://walrus-app-q9ypb.ondigitalocean.app/crypto-deposit-update",
-            "order_id": "RGDBP-21314",
-            "order_description": "Cashwin Deposit",
-            "is_fee_paid_by_user": true
-        });
+        var params2 = {
+            currency_from: 'inr',
+            currency_to: 'usdttrc20'
+        }
 
-        var config = {
-            method: 'post',
-            maxBodyLength: Infinity,
-            url: 'https://api.nowpayments.io/v1/payment',
-            headers: {
-                'x-api-key': '94W13XS-NM44S5X-MMR11S4-XEKMMKG',
-                'Content-Type': 'application/json'
-            },
-            data: data
-        };
+        let resp2 = await NPApi.getMinimumPaymentAmount(params2)
+        let min = resp2.min_amount
 
-        axios(config)
-            .then(function (response) {
-                res.send(JSON.stringify(response.data));
-                console.log(JSON.stringify(response.data))
-            })
-            .catch(function (error) {
-                console.log(error);
-                res.send(error)
-            });
+        var params = {
+            price_amount: min,
+            price_currency: 'inr',
+            pay_currency: 'usdttrc20',
+            ipn_callback_url: 'https://walrus-app-q9ypb.ondigitalocean.app/crypto-deposit-update',
+            order_id: 'HATTDB-638922',
+            order_description: 'Cashwin Deposit',
+            is_fee_paid_by_user: true
+        }
+
+        let resp = await NPApi.createPayment(params)
+        console.log(resp)
     } catch (error) {
         console.log('Error: ', error)
         res.send(error)
