@@ -1865,7 +1865,11 @@ app.post('/placeSweeperBet', async (req, res) => {
         let BBalance = parseFloat(response2.bonusBalance) === 0 ? 0 : parseFloat(response2.bonusBalance) > (amount * (5 / 100)) ? (amount * (5 / 100)) : parseFloat(response2.bonusBalance)
 
         if (amount < 10) {
-            return res.status(400).send({ success: false, error: 'Unable to place bet' })
+            return res.status(400).send({ success: false, error: 'Min Amount to bet is 10rs' })
+        }
+
+        if (amount > 100) {
+            return res.status(400).send({ success: false, error: 'Max Amount to bet is100rs' })
         }
 
         if (size !== 2 && size !== 4) return res.status(400).send({ success: false, error: 'Unsupported size' })
