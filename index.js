@@ -71,11 +71,7 @@ server.listen(8080, () => {
 });
 
 function leftTime(prop) {
-    if (prop < 30) {
-        return 29 - prop
-    } else {
-        return 59 - prop
-    }
+    return 59 - prop
 }
 
 const checkInSchema = new mongoose.Schema({
@@ -302,7 +298,7 @@ async function fetchUrl() {
     })
 }
 
-const NPApi = new NowPaymentsApi({ apiKey: '94W13XS-NM44S5X-MMR11S4-XEKMMKG' }) 
+const NPApi = new NowPaymentsApi({ apiKey: '94W13XS-NM44S5X-MMR11S4-XEKMMKG' })
 
 //fetchUrl()
 
@@ -878,8 +874,8 @@ app.post('/withdraw', limiter, async (req, res) => {
         const v = await withdrawalModel.findOne({ id: user.id, status: 'Success', period: date.getDate() + '' + date.getMonth() + '' + date.getFullYear() })
         const v2 = await withdrawalModel.findOne({ id: user.id, status: 'Pending', period: date.getDate() + '' + date.getMonth() + '' + date.getFullYear() })
 
-        if(v || v2) return res.status(400).send({ success: false, error: 'You can withdraw max 1 time in a day'})
-        if(amount > 1000) return res.status(400).send({ success: false, error: 'You can withdraw max 1000 at a time'})
+        if (v || v2) return res.status(400).send({ success: false, error: 'You can withdraw max 1 time in a day' })
+        if (amount > 1000) return res.status(400).send({ success: false, error: 'You can withdraw max 1000 at a time' })
 
         if (!deposit) return res.status(400).send({ success: false, error: 'You need to make deposit of atleast 30rs for first withdrawal.' })
         if (amount < 100) return res.status(400).send({ success: false, error: 'Unable to make withdrawal request' })
@@ -894,7 +890,7 @@ app.post('/withdraw', limiter, async (req, res) => {
 
         if (!card) return res.status(400).send({ success: false, error: 'UPI not added' })
 
-        
+
         let l = ("0" + (date.getMonth() + 1)).slice(-2) + '/' + ("0" + (date.getDate())).slice(-2) + ' ' + ("0" + (date.getHours())).slice(-2) + ':' + ("0" + (date.getMinutes())).slice(-2)
         let rNumber = Math.floor(Math.random() * 10000)
         let eDate = date.getFullYear() + '' + ("0" + date.getMonth()).slice(-2) + '' + ("0" + date.getDate()).slice(-2) + '' + ("0" + date.getHours()).slice(-2) + '' + ("0" + date.getMinutes()).slice(-2) + '' + ("0" + date.getSeconds()).slice(-2) + '' + ("0" + date.getMilliseconds()).slice(-2) + '' + rNumber
@@ -1432,9 +1428,9 @@ app.post('/transfer-ref-bal', async (req, res) => {
         const user = await userModel.findOne({ userToken: id })
         const resp = await balanceModel.findOne({ id: user.id })
 
-        if(resp.refBalance < 30) return res.status(400).send({ success: false, error: 'Min transfer is Rs100'})
+        if (resp.refBalance < 30) return res.status(400).send({ success: false, error: 'Min transfer is Rs100' })
 
-        await balanceModel.updateOne({ id: user.id}, {
+        await balanceModel.updateOne({ id: user.id }, {
             $set: {
                 refBalance: 0
             },
@@ -1443,9 +1439,9 @@ app.post('/transfer-ref-bal', async (req, res) => {
             }
         })
 
-        return res.status(200).send({ success: true})
+        return res.status(200).send({ success: true })
     } catch (error) {
-        
+
     }
 })
 
@@ -1687,7 +1683,7 @@ timer.addEventListener('secondsUpdated', function () {
     console.log(a)
     io.sockets.to('fastParity').emit('counter', { counter: a });
 
-    if (a === 3) {
+    if (a === 10) {
         fastParityPeriod().then(response => {
             let roomId = parseFloat(response[0]?.id)
             updateFastParityPeriod(roomId).then((response2) => {
@@ -1781,39 +1777,122 @@ async function updateFastParityPeriod(id) {
             }
         }
 
-        let newId = await getParityId().then((response) => {
-            return response;
-        });
-
+        let newId = await getParityId()
+        await fastParityModel.findOneAndUpdate({ id: id }, { $set: { winner: result } });
         let updatePeriod = await fastParityModel.findOneAndUpdate({ id: id }, { $set: { winner: result } });
         let getPeriod = await fastParityModel.find().sort({ _id: -1 }).limit(26);
         const firstUpdate = await fastParityOrderModel.updateMany({ period: id }, { $set: { result: result } });
         const getFirstItems = await fastParityOrderModel.find({ period: id })
 
-        let m = [];
-        for (let i = 0; i < getFirstItems.length; i++) {
+        const m = [];
+        for (const item of getFirstItems) {
             let al;
-            if (getFirstItems[i].selectType === 'color') {
-                if (getFirstItems[i].select === resultInColor) {
-                    al = getFirstItems[i].amount * 2
-                    await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 2 } });
+            if (item.selectType === 'color') {
+                if (item.select === resultInColor) {
+                    al = item.amount * 2
+                    await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: item.amount * 2 } });
                 } else {
-                    if (getFirstItems[i].select === 'V' && isV) {
-                        al = getFirstItems[i].amount * 4.5
-                        await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 4.5 } });
+                    if (item.select === 'V' && isV) {
+                        al = item.amount * 4.5
+                        await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: item.amount * 4.5 } });
                     }
                 }
             } else {
-                if (getFirstItems[i].selectType === 'number' && getFirstItems[i].select === result) {
-                    al = getFirstItems[i].amount * 9
-                    await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 9 } });
+                if (item.selectType === 'number' && item.select === result) {
+                    al = item.amount * 9
+                    await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: item.amount * 9 } });
                 }
             }
 
-            let getD = await userModel.findOne({ id: getFirstItems[i].id })
+            let getD = await userModel.findOne({ id: item.id })
 
             const fi = new financialModel({
-                id: getFirstItems[i].id,
+                id: item.id,
+                title: 'Fast Parity Income',
+                date: ("0" + (new Date().getMonth() + 1)).slice(-2) + '/' + ("0" + (new Date().getDate())).slice(-2) + ' ' + ("0" + (new Date().getHours() + 1)).slice(-2) + ':' + ("0" + (new Date().getMinutes() + 1)).slice(-2),
+                amount: al,
+                type: true,
+                image: 'https://res.cloudinary.com/fiewin/image/upload/images/FastParityIncome.png'
+            })
+
+            if (al) {
+                await fi.save()
+            }
+
+            const q = { id: item.id, period: id, price: 19975.01, type: item.selectType === 'color' ? true : false, select: item.select, point: item.amount, result }
+            m.push(q)
+        }
+
+        const nData = new fastParityModel({
+            id: newId.toString(),
+            winner: '10'
+        })
+
+        nData.save()
+
+        console.log(m)
+        return { result: m, id: newId };
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+app.post('/update-parity-record', limiter, async (req, res) => {
+    try {
+        const { pid, uid } = req.body;
+        console.log(req.body)
+
+        let resp = await fastParityModel.findOne({ id: pid })
+        let result = resp?.winner
+
+        if (result === 10) return console.log({ success: false, message: 'Period result not out!' })
+
+        let resultInColor;
+        let isV = false;
+
+        if (result === 1 || result === 3 || result === 5 || result === 7 || result === 9) {
+            resultInColor = 'G'
+
+            if (result === 5) {
+                isV = true
+            }
+        } else {
+            if (result === 0 || result === 2 || result === 4 || result === 6 || result === 8) {
+                resultInColor = 'R'
+
+                if (result === 0) {
+                    isV = true
+                }
+            }
+        }
+
+        let records = await fastParityOrderModel.find({ id: uid, period: pid })
+        if (!records[0]) return console.log({ success: false, error: 'Please make a bet first' })
+
+        let filter = records.filter(x => x.result === undefined)
+        if (!filter[0]) return console.log({ success: false, error: 'Your bet records are already updated' })
+
+        for (let i = 0; i < filter.length; i++) {
+            let al;
+            if (filter[i].selectType === 'color') {
+                if (filter[i].select === resultInColor) {
+                    al = filter[i].amount * 2
+                    await balanceModel.updateOne({ id: filter[i].id }, { $inc: { mainBalance: filter[i].amount * 2 } });
+                } else {
+                    if (filter[i].select === 'V' && isV) {
+                        al = filter[i].amount * 4.5
+                        await balanceModel.updateOne({ id: filter[i].id }, { $inc: { mainBalance: filter[i].amount * 4.5 } });
+                    }
+                }
+            } else {
+                if (filter[i].selectType === 'number' && filter[i].select === result) {
+                    al = filter[i].amount * 9
+                    await balanceModel.updateOne({ id: filter[i].id }, { $inc: { mainBalance: filter[i].amount * 9 } });
+                }
+            }
+
+            const fi = new financialModel({
+                id: filter[i].id,
                 title: 'Fast Parity Income',
                 date: ("0" + (new Date().getMonth() + 1)).slice(-2) + '/' + ("0" + (new Date().getDate())).slice(-2) + ' ' + ("0" + (new Date().getHours() + 1)).slice(-2) + ':' + ("0" + (new Date().getMinutes() + 1)).slice(-2),
                 amount: al,
@@ -1824,28 +1903,15 @@ async function updateFastParityPeriod(id) {
             if (al) {
                 fi.save()
             }
-
-            let q = { id: getFirstItems[i].id, period: id, price: 19975.01, type: getFirstItems[i].selectType === 'color' ? true : false, select: getFirstItems[i].select, point: getFirstItems[i].amount, result }
-            m.push(q)
         }
 
-        const nData = new fastParityModel({
-            id: newId.toString(),
-            winner: '10'
-        })
-
-        if (getPeriod[25]) {
-            await fastParityModel.deleteOne({ id: getPeriod[25].id })
-        }
-
-        nData.save()
-
-        console.log(m)
-        return { result: m, id: newId };
+        console.log('updated')
+        return res.status(200).send({ success: true})
     } catch (error) {
-        console.log(error)
+        console.log('Error: \n', error)
+        return res.status(400).send({ success: false, error: 'Failed to update.'})
     }
-}
+})
 
 app.post('/placeSweeperBet', async (req, res) => {
     try {
@@ -2039,7 +2105,7 @@ app.post('/claimBox', async (req, res) => {
         let newBomb2 = get_random(response2?.unchecked)
         let needBomb = get_random([true, false])
 
-        if(newBomb2 === box && needBomb === true) {
+        if (newBomb2 === box && needBomb === true) {
             await collection2.findOneAndUpdate({ id: response.id, betId: id }, {
                 $set: {
                     status: true,
@@ -2157,8 +2223,8 @@ app.post('/approve-withdrawal', async (req, res) => {
         let collection = db.collection('withdrawals');
         let collection2 = db.collection('balances')
 
-        let user = await collection.findOne({ wid})
-        let resp = await collection2.findOne({ id: user.id})
+        let user = await collection.findOne({ wid })
+        let resp = await collection2.findOne({ id: user.id })
 
         if (type) {
             await collection.updateOne({ wid }, {

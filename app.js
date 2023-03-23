@@ -90,6 +90,11 @@ async function updateFastParityPeriod(id) {
 }
 
 
+if (prop < 30) {
+    return 29 - prop
+} else {
+    return 59 - prop
+}
 
       <BrowserRouter>
         {user ? (
