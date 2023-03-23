@@ -1879,6 +1879,12 @@ app.post('/update-parity-record', limiter, async (req, res) => {
         if (!filter[0]) return res.status(400).send({ success: false, error: 'Your bet records are already updated' })
 
         for (let i = 0; i < filter.length; i++) {
+            await fastParityOrderModel.updateOne({ _id: filter[i]._id }, {
+                $set: {
+                    result: result
+                }
+            })
+
             let al;
             if (filter[i].selectType === 'color') {
                 if (filter[i].select === resultInColor) {
