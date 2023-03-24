@@ -347,7 +347,6 @@ app.post('/register', limiter, async (req, res) => {
             });
 
         if (resp.code === 400) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
-        if (resp.otp !== parseFloat(otp)) return res.status(400).send({ success: false, error: 'Otp not matched.' })
 
         let resp2 = await collection2.findOne({ phoneNumber: parseFloat(phoneNumber) });
         if (resp2) return res.status(400).send({ success: false, error: 'User exists already.' });
