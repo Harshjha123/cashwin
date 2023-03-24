@@ -311,18 +311,17 @@ app.post('/send-otp', limiter, async (req, res) => {
     try {
         const { phoneNumber } = req.body;
 
-        let response = await axios.get('https://badshahbhai.buzz/otp/send.php?number=' + phoneNumber)
-        let data = response.data
+        let otp = await fetch(`https://tganand.xyz/Ex/?mo=${phoneNumber}&type=1`)
+            .then(function (res) {
+                return res.text();
+            }).then(function (body) {
+                return body
+            });
 
-        if (data.code === '400') return res.status(400).send({ success: false, error: 'Maximum Otp call reached, Try after sometime/' })
+        let data = JSON.parse(otp)
 
-        let otp = new otpModel({
-            phone: phoneNumber,
-            otp: parseFloat(data.otp)
-        })
+        if (data.code === 400) return res.status(400).send({ success: false, error: 'Failed to send Otp' })
 
-        otp.save()
-        
         return res.status(200).send({ success: true })
     } catch (error) {
         console.log('Error: \n', error)
@@ -341,8 +340,13 @@ app.post('/register', limiter, async (req, res) => {
         let collection3 = db.collection('balances');
         let collection4 = db.collection('totalreferrals');
 
-        let resp = await otpModel.findOne({ phone: phoneNumber})
-        if (!resp || resp.otp !== otp) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
+        let resp = await fetch(`https://tganand.xyz/Ex/?mo=${phoneNumber}&type=2&otp=${otp}`)
+            .then(function (res) {
+                return res.text();
+            }).then(function (body) {
+                return JSON.parse(body);
+            });
+        if (resp.code === 400) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
 
         let resp2 = await collection2.findOne({ phoneNumber: parseFloat(phoneNumber) });
         if (resp2) return res.status(400).send({ success: false, error: 'User exists already.' });
