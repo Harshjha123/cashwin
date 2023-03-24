@@ -320,6 +320,8 @@ app.post('/send-otp', limiter, async (req, res) => {
             phone: phoneNumber,
             otp: parseFloat(data.otp)
         })
+
+        otp.save()
         
         return res.status(200).send({ success: true })
     } catch (error) {
