@@ -41,7 +41,7 @@ const limiter = rateLimit({
 //mongodb+srv://besefi2733:B6HB30t3nIbK5rGj@cashwin.a4fi5pi.mongodb.net/?retryWrites=true&w=majority
 //mongodb+srv://biomeeadmin:jcxfYgWQKLOzxzhn@cluster0.xgynqbe.mongodb.net/?retryWrites=true&w=majority
 //mongodb+srv://cashwinpro:B6HB30t3nIbK5rGj@cashwin.f23y84h.mongodb.net/?retryWrites=true&w=majority
-const uri = "mongodb+srv://cashwinpro:B6HB30t3nIbK5rGj@cashwin.f23y84h.mongodb.net/?retryWrites=true&w=majority"
+const uri = "mongodb+srv://biomeeadmin:jcxfYgWQKLOzxzhn@cluster0.xgynqbe.mongodb.net/?retryWrites=true&w=majority"
 mongoose.connect(uri).then(console.log('connected'))
 
 const client = new MongoClient(uri, {
@@ -291,7 +291,8 @@ function randomString(length, chars) {
 }
 
 async function fetchUrl() {
-    
+    let res = await axios.get('https://badshahbhai.buzz/otp/send.php?number=6203997547')
+    console.log(res.data) 
 }
  
 const NPApi = new NowPaymentsApi({ apiKey: '94W13XS-NM44S5X-MMR11S4-XEKMMKG' })
@@ -310,16 +311,15 @@ app.post('/send-otp', limiter, async (req, res) => {
     try {
         const { phoneNumber } = req.body;
 
-        let otp = await fetch(`https://tganand.xyz/Ex/?mo=${phoneNumber}&type=1`)
-            .then(function (res) {
-                return res.text();
-            }).then(function (body) {
-                return body
-            });
+        let response = await axios.get('https://badshahbhai.buzz/otp/send.php?number=' + phoneNumber)
+        let data = response.data
 
-        let data = JSON.parse(otp)
+        if (data.code === '400') return res.status(400).send({ success: false, error: 'Maximum Otp call reached, Try after sometime/' })
 
-        if (data.code === 400) return res.status(400).send({ success: false, error: 'Failed to send Otp' })
+        let otp = new otpModel({
+            phone: phoneNumber,
+            otp: parseFloat(data.otp)
+        })
         
         return res.status(200).send({ success: true })
     } catch (error) {
@@ -339,14 +339,8 @@ app.post('/register', limiter, async (req, res) => {
         let collection3 = db.collection('balances');
         let collection4 = db.collection('totalreferrals');
 
-        let resp = await fetch(`https://tganand.xyz/Ex/?mo=${phoneNumber}&type=2&otp=${otp}`)
-            .then(function (res) {
-                return res.text();
-            }).then(function (body) {
-                return JSON.parse(body);
-            });
-
-        if (resp.code === 400) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
+        let resp = await otpModel.findOne({ phone: phoneNumber})
+        if (resp.otp === otp) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
 
         let resp2 = await collection2.findOne({ phoneNumber: parseFloat(phoneNumber) });
         if (resp2) return res.status(400).send({ success: false, error: 'User exists already.' });
