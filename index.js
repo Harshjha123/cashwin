@@ -1231,7 +1231,7 @@ app.post('/on-deposit', limiter, async (req, res) => {
             }
         }
 
-        await collection3.findOneAndUpdate({ id: resp.id }, { $inc: { depositBalance: parseFloat(data.amount), bonusBalance: parseFloat(data.amount) * (p / 100) } })
+        await collection3.findOneAndUpdate({ id: resp.id }, { $inc: { depositBalance: parseFloat(data.amount), bonusBalance: parseFloat(data.amount) } })
         await collection6.findOneAndUpdate({ id: resp.id }, { $inc: { deposit: parseFloat(data.amount) } })
 
         await collection4.updateMany({ user: resp?.id }, {
