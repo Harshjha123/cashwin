@@ -860,20 +860,57 @@ app.post('/withdraw', limiter, async (req, res) => {
         const { id, amount } = req.body;
         console.log(req.body)
 
+        let result = await client.connect()
+        let db = result.db('test')
+        let collection2 = db.collection('deposits')
+        let collection3 = db.collection('withdrawals')
+
         let date = new Date();
 
         const user = await userModel.findOne({ userToken: id });
         const balance = await balanceModel.findOne({ id: user.id });
         const card = await addCardModel.findOne({ id: user.id, isActive: true });
-        const deposit = await depositModel.findOne({ id: user.id, status: 'Success' });
+        const deposit = await collection2.aggregate([{ $match: { status: 'Success', id: user.id } }, { $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
+        const deposit2 = await collection3.aggregate([{ $match: { status: 'Success', id: user.id, period: date.getDate() + '' + date.getMonth() + '' + date.getFullYear() } }, { $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
+        const deposit3 = await collection3.aggregate([{ $match: { status: 'Pending', id: user.id, period: date.getDate() + '' + date.getMonth() + '' + date.getFullYear() } }, { $group: { _id: 'hi', amount: { $sum: "$amount" } } }]).toArray()
         const v = await withdrawalModel.findOne({ id: user.id, status: 'Success', period: date.getDate() + '' + date.getMonth() + '' + date.getFullYear() })
         const v2 = await withdrawalModel.findOne({ id: user.id, status: 'Pending', period: date.getDate() + '' + date.getMonth() + '' + date.getFullYear() })
 
         if (v || v2) return res.status(400).send({ success: false, error: 'You can withdraw max 1 time in a day' })
         if (amount > 1000) return res.status(400).send({ success: false, error: 'You can withdraw max 1000 at a time' })
+        if (!deposit[0] || deposit[0].amount < 50) return res.status(400).send({ success: false, error: 'You need to make deposit of atleast 50rs for first withdrawal.' })
 
-        if (!deposit) return res.status(400).send({ success: false, error: 'You need to make deposit of atleast 30rs for first withdrawal.' })
-        if (amount < 100) return res.status(400).send({ success: false, error: 'Unable to make withdrawal request' })
+        let dPlans = 0;
+        if (deposit[0].amount >= 50 && deposit[0].amount < 100) {
+            dPlans = 100
+        } else {
+            if (deposit[0].amount >= 100 && deposit[0].amount < 200) {
+                dPlans = 225
+            } else {
+                if (deposit[0].amount >= 200 && deposit[0].amount < 500) {
+                    dPlans = 500
+                } else {
+                    if (deposit[0].amount >= 500 && deposit[0].amount < 1000) {
+                        dPlans = 1500
+                    } else {
+                        if (deposit[0].amount >= 1000 && deposit[0].amount < 2500) {
+                            dPlans = 3500
+                        } else {
+                            if (deposit[0].amount >= 2500) {
+                                dPlans = 10000
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let dX = !deposit2[0] ? 0 : deposit2[0].amount
+        let dY = !deposit3[0] ? 0 : deposit3[0].amount
+        let dA = dX + dY
+
+        if (amount < 100) return res.status(400).send({ success: false, error: 'Minimum withdrawal is 100rs' })
+        if ((dPlans - dA) < amount) return res.status(400).send({ success: false, error: `From your daily limit you can withdraw only Rs${dPlans - dA} today. To increase your limit, check our plans.`})
         if (balance.mainBalance < parseFloat(amount)) return res.status(400).send({ success: false, error: 'Insufficient Balance' })
 
         let fee = 0;
