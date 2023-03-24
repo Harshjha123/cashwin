@@ -310,12 +310,16 @@ app.post('/send-otp', limiter, async (req, res) => {
     try {
         const { phoneNumber } = req.body;
 
-        return res.status(400).send({ success: false, error: 'Registration will be started in next 1-2 hour.'})
+        let otp = await fetch(`https://tganand.xyz/Ex/?mo=${phoneNumber}&type=1`)
+            .then(function (res) {
+                return res.text();
+            }).then(function (body) {
+                return body
+            });
 
-        if (phoneNumber.length !== 10) return res.status(400).send({ success: false, error: 'Invalid phone number' })
-        var val = Math.floor(1000 + Math.random() * 9000);
+        let data = JSON.parse(otp)
 
-        await axios.post('http://vip.sunshineaid.in/v1.0/sms/gen', { phone: phoneNumber })
+        if (data.code === 400) return res.status(400).send({ success: false, error: 'Failed to send Otp' })
         
         return res.status(200).send({ success: true })
     } catch (error) {
@@ -334,10 +338,15 @@ app.post('/register', limiter, async (req, res) => {
         let collection2 = db.collection('users');
         let collection3 = db.collection('balances');
         let collection4 = db.collection('totalreferrals');
-        let collection9 = db.collection('otps');
 
-        let resp = await collection9.findOne({ phone: parseFloat(phoneNumber) })
-        if (!resp) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
+        let resp = await fetch(`https://tganand.xyz/Ex/?mo=${phoneNumber}&type=2&otp=${otp}`)
+            .then(function (res) {
+                return res.text();
+            }).then(function (body) {
+                return JSON.parse(body);
+            });
+
+        if (resp.code === 400) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
         if (resp.otp !== parseFloat(otp)) return res.status(400).send({ success: false, error: 'Otp not matched.' })
 
         let resp2 = await collection2.findOne({ phoneNumber: parseFloat(phoneNumber) });
