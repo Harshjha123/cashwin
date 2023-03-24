@@ -291,13 +291,9 @@ function randomString(length, chars) {
 }
 
 async function fetchUrl() {
-    await fast2sms.sendMessage({ authorization: 'lwA36rKVqxyJ9OjImahC5YUQuegHk0EBtNpGzfonvSRPDdi8cWCl8JU39HmQykso57zIShERvdOGWBfZ', message: 'My First Message', numbers: ['6202565956'] }).then((response) => {
-        console.log('Data: ', response)
-    }).catch((error) => {
-        console.log(error)
-    })
+    
 }
-
+ 
 const NPApi = new NowPaymentsApi({ apiKey: '94W13XS-NM44S5X-MMR11S4-XEKMMKG' })
 
 //fetchUrl()
@@ -314,22 +310,13 @@ app.post('/send-otp', limiter, async (req, res) => {
     try {
         const { phoneNumber } = req.body;
 
+        return res.status(400).send({ success: false, error: 'Registration will be started in next 1-2 hour.'})
+
         if (phoneNumber.length !== 10) return res.status(400).send({ success: false, error: 'Invalid phone number' })
         var val = Math.floor(1000 + Math.random() * 9000);
 
-        await fast2sms.sendMessage({ authorization: 'lwA36rKVqxyJ9OjImahC5YUQuegHk0EBtNpGzfonvSRPDdi8cWCl8JU39HmQykso57zIShERvdOGWBfZ', message: val, numbers: [phoneNumber] })
-        let resp = await otpModel.findOne({ phone: parseFloat(phoneNumber) })
-
-        if (resp) {
-            await otpModel.deleteOne({ phone: parseFloat(phoneNumber) })
-        }
-
-        let otp = new otpModel({
-            phone: phoneNumber,
-            otp: val
-        })
-
-        otp.save()
+        await axios.post('http://vip.sunshineaid.in/v1.0/sms/gen', { phone: phoneNumber })
+        
         return res.status(200).send({ success: true })
     } catch (error) {
         console.log('Error: \n', error)
@@ -1846,8 +1833,11 @@ app.post('/update-parity-record', limiter, async (req, res) => {
         let uid = u.id
 
         let resp = await fastParityModel.findOne({ id: pid })
+        let resp4 = await fastParityModel.findOne({ winner: '10'})
+
         console.log('ID: ', resp)
         if(!resp) return res.status(400).send({ success: false, error: 'Invalid period id.'})
+        if(!resp4) return res.status(400).send({ success: false, error: 'Please try after 1 min'})
 
         let result = resp?.winner
 
