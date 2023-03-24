@@ -342,7 +342,7 @@ app.post('/register', limiter, async (req, res) => {
         let collection4 = db.collection('totalreferrals');
 
         let resp = await otpModel.findOne({ phone: phoneNumber})
-        if (resp.otp === otp) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
+        if (!resp || resp.otp !== otp) return res.status(400).send({ success: false, error: 'Otp is Invalid or Expired.' })
 
         let resp2 = await collection2.findOne({ phoneNumber: parseFloat(phoneNumber) });
         if (resp2) return res.status(400).send({ success: false, error: 'User exists already.' });
