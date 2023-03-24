@@ -41,7 +41,7 @@ const limiter = rateLimit({
 //mongodb+srv://besefi2733:B6HB30t3nIbK5rGj@cashwin.a4fi5pi.mongodb.net/?retryWrites=true&w=majority
 //mongodb+srv://biomeeadmin:jcxfYgWQKLOzxzhn@cluster0.xgynqbe.mongodb.net/?retryWrites=true&w=majority
 //mongodb+srv://cashwinpro:B6HB30t3nIbK5rGj@cashwin.f23y84h.mongodb.net/?retryWrites=true&w=majority
-const uri = "mongodb+srv://biomeeadmin:jcxfYgWQKLOzxzhn@cluster0.xgynqbe.mongodb.net/?retryWrites=true&w=majority"
+const uri = "mongodb+srv://cashwinpro:B6HB30t3nIbK5rGj@cashwin.f23y84h.mongodb.net/?retryWrites=true&w=majority"
 mongoose.connect(uri).then(console.log('connected'))
 
 const client = new MongoClient(uri, {
