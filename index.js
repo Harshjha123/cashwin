@@ -1823,18 +1823,18 @@ async function updateFastParityPeriod(id) {
             let al;
             if (getFirstItems[i].selectType === 'color') {
                 if (getFirstItems[i].select === resultInColor) {
-                    al = getFirstItems[i].amount * 2
-                    await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 2 } });
+                    al = (getFirstItems[i].amount - (getFirstItems[i].amount * (2.5 / 100))) * 2
+                    await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: al } });
                 } else {
                     if (getFirstItems[i].select === 'V' && isV) {
-                        al = getFirstItems[i].amount * 4.5
-                        await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 4.5 } });
+                        al = (getFirstItems[i].amount - (getFirstItems[i].amount * (2.5 / 100))) * 4.5
+                        await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: al } });
                     }
                 }
             } else {
                 if (getFirstItems[i].selectType === 'number' && getFirstItems[i].select === result) {
-                    al = getFirstItems[i].amount * 9
-                    await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 9 } });
+                    al = (getFirstItems[i].amount - (getFirstItems[i].amount * (2.5 / 100))) * 9
+                    await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: al } });
                 }
             }
 
