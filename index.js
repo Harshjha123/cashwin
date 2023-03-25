@@ -877,7 +877,6 @@ app.post('/withdraw', limiter, async (req, res) => {
         const v2 = await withdrawalModel.findOne({ id: user.id, status: 'Pending', period: date.getDate() + '' + date.getMonth() + '' + date.getFullYear() })
 
         if (v || v2) return res.status(400).send({ success: false, error: 'You can withdraw max 1 time in a day' })
-        if (amount > 1000) return res.status(400).send({ success: false, error: 'You can withdraw max 1000 at a time' })
         if (!deposit[0] || deposit[0].amount < 50) return res.status(400).send({ success: false, error: 'You need to make deposit of atleast 50rs for first withdrawal.' })
 
         let dPlans = 0;
