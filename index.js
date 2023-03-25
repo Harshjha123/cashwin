@@ -1243,23 +1243,23 @@ app.post('/on-deposit', limiter, async (req, res) => {
         fi.save()
 
         let p = 0;
-        if (parseFloat(data.amount) > 49 && parseFloat(data.amount) < 100) {
-            p = 5
+        if (parseFloat(data.amount) >= 100 && parseFloat(data.amount) < 250) {
+            p = 50
         } else {
-            if (parseFloat(data.amount) > 99 && parseFloat(data.amount) < 250) {
-                p = 10
+            if (parseFloat(data.amount) >= 250 && parseFloat(data.amount) < 800) {
+                p = 150
             } else {
-                if (parseFloat(data.amount) > 249 && parseFloat(data.amount) < 500) {
-                    p = 25
+                if (parseFloat(data.amount) >= 800 && parseFloat(data.amount) < 2500) {
+                    p = 600
                 } else {
-                    if (parseFloat(data.amount) > 499 && parseFloat(data.amount) < 1000) {
-                        p = 50
+                    if (parseFloat(data.amount) >= 2500 && parseFloat(data.amount) < 5000) {
+                        p = 2500
                     } else {
-                        if (parseFloat(data.amount) > 999 && parseFloat(data.amount) < 2500) {
-                            p = 100
+                        if (parseFloat(data.amount) >= 5000 && parseFloat(data.amount) < 10000) {
+                            p = 5000
                         } else {
-                            if (parseFloat(data.amount) > 2499) {
-                                p = 500
+                            if (parseFloat(data.amount) >= 10000) {
+                                p = 15000
                             }
                         }
                     }
@@ -1267,7 +1267,7 @@ app.post('/on-deposit', limiter, async (req, res) => {
             }
         }
 
-        await collection3.findOneAndUpdate({ id: resp.id }, { $inc: { depositBalance: parseFloat(data.amount), bonusBalance: parseFloat(data.amount) } })
+        await collection3.findOneAndUpdate({ id: resp.id }, { $inc: { depositBalance: parseFloat(data.amount), bonusBalance: p } })
         await collection6.findOneAndUpdate({ id: resp.id }, { $inc: { deposit: parseFloat(data.amount) } })
 
         await collection4.updateMany({ user: resp?.id }, {
@@ -1784,92 +1784,124 @@ async function getParityResult(id) {
 }
 
 async function updateFastParityPeriod(id) {
-    try {
-        let result = await getParityResult(id.toString()).then((response2) => {
-            return response2
-        });
+    const result = await getParityResult(id.toString());
 
-        let resultInColor;
-        let isV = false;
+    let resultInColor;
+    let isV = false;
 
-        if (result === 1 || result === 3 || result === 5 || result === 7 || result === 9) {
-            resultInColor = 'G'
+    if (result === 1 || result === 3 || result === 5 || result === 7 || result === 9) {
+        resultInColor = 'G';
 
-            if (result === 5) {
-                isV = true
-            }
-        } else {
-            if (result === 0 || result === 2 || result === 4 || result === 6 || result === 8) {
-                resultInColor = 'R'
+        if (result === 5) {
+            isV = true;
+        }
+    } else {
+        if (result === 0 || result === 2 || result === 4 || result === 6 || result === 8) {
+            resultInColor = 'R';
 
-                if (result === 0) {
-                    isV = true
-                }
+            if (result === 0) {
+                isV = true;
             }
         }
+    }
 
-        let newId = await getParityId().then((response) => {
-            return response;
-        });
+    const newId = await getParityId();
 
-        let updatePeriod = await fastParityModel.findOneAndUpdate({ id: id }, { $set: { winner: result } });
-        let getPeriod = await fastParityModel.find().sort({ _id: -1 }).limit(26);
-        const firstUpdate = await fastParityOrderModel.updateMany({ period: id }, { $set: { result: result } });
-        const getFirstItems = await fastParityOrderModel.find({ period: id })
+    // Use bulk write operations to perform multiple updates at once
+    const bulkOps = [];
+    const updateObj = { $set: { winner: result } };
+    bulkOps.push({
+        updateOne: {
+            filter: { id: id },
+            update: updateObj,
+            upsert: true
+        }
+    });
 
-        let m = [];
-        for (let i = 0; i < getFirstItems.length; i++) {
-            let al;
-            if (getFirstItems[i].selectType === 'color') {
-                if (getFirstItems[i].select === resultInColor) {
-                    al = (getFirstItems[i].amount - (getFirstItems[i].amount * (2.5 / 100))) * 2
-                    await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: al } });
-                } else {
-                    if (getFirstItems[i].select === 'V' && isV) {
-                        al = (getFirstItems[i].amount - (getFirstItems[i].amount * (2.5 / 100))) * 4.5
-                        await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: al } });
-                    }
-                }
+    await fastParityModel.bulkWrite(bulkOps);
+
+    await Promise.all([
+        await fastParityOrderModel.ensureIndexes({ period: 1 }),
+        await fastParityModel.ensureIndexes({ _id: -1 })
+    ]);
+
+    const m =[]
+
+    const getPeriod = await fastParityModel.find().sort({ _id: -1 }).limit(26);
+    const firstUpdate = await fastParityOrderModel.updateMany({ period: id }, updateObj);
+    // Use bulk write operations to update multiple records at once
+    const getFirstItems = await fastParityOrderModel.find({ period: id })
+    const updates = getFirstItems.map(async item => {
+        let al = 0;
+
+        if (item.selectType === 'color') {
+            if (item.select === resultInColor) {
+                al = item.amount * 2;
+                await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: item.amount * 2 } });
             } else {
-                if (getFirstItems[i].selectType === 'number' && getFirstItems[i].select === result) {
-                    al = (getFirstItems[i].amount - (getFirstItems[i].amount * (2.5 / 100))) * 9
-                    await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: al } });
+                if (item.select === 'V' && isV) {
+                    al = item.amount * 4.5;
+                    await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: item.amount * 4.5 } });
                 }
             }
+        } else if (item.selectType === 'number' && item.select === result) {
+            al = item.amount * 9;
+            await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: item.amount * 9 } });
+        }
 
-            let getD = await userModel.findOne({ id: getFirstItems[i].id })
+        const getD = await userModel.findOne({ id: item.id })
+
+        if (al) {
 
             const fi = new financialModel({
-                id: getFirstItems[i].id,
+                id: item.id,
                 title: 'Fast Parity Income',
                 date: ("0" + (new Date().getMonth() + 1)).slice(-2) + '/' + ("0" + (new Date().getDate())).slice(-2) + ' ' + ("0" + (new Date().getHours() + 1)).slice(-2) + ':' + ("0" + (new Date().getMinutes() + 1)).slice(-2),
                 amount: al,
                 type: true,
                 image: 'https://res.cloudinary.com/fiewin/image/upload/images/FastParityIncome.png'
-            })
+            });
 
-            if (al) {
-                fi.save()
-            }
-
-            let q = { id: getFirstItems[i].id, period: id, price: 19975.01, type: getFirstItems[i].selectType === 'color' ? true : false, select: getFirstItems[i].select, point: getFirstItems[i].amount, result }
-            m.push(q)
+            await fi.save();
         }
 
-        const nData = new fastParityModel({
-            id: newId.toString(),
-            winner: '10'
-        })
+        const q = {
+            id: item.id,
+            period: id,
+            price: 19975.01,
+            type: item.selectType === 'color',
+            select: item.select,
+            point: item.amount,
+            result: result
+        };
 
-        nData.save()
+        m.push(q);
 
-        console.log(m)
-        return { result: m, id: newId };
-    } catch (error) {
-        console.log(error)
-    }
+        await fastParityOrderModel.updateOne({ _id: item._id }, { $set: { result: result } });
+    })
+
+    const nData = new fastParityModel({
+        id: newId.toString(),
+        winner: '10'
+    });
+
+    nData.save(); 
+
+    return { result: m, id: newId };
 }
 
+async function createIndexF() {
+    const newId = await getParityId();
+
+    let d = new fastParityModel({
+        id: newId.toString(),
+        winner: '10'
+    });
+
+    d.save()
+
+    console.log('added')
+}
 
 app.post('/update-parity-record', limiter, async (req, res) => {
     try {
