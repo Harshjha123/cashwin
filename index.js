@@ -292,9 +292,9 @@ function randomString(length, chars) {
 
 async function fetchUrl() {
     let res = await axios.get('https://badshahbhai.buzz/otp/send.php?number=6203997547')
-    console.log(res.data) 
+    console.log(res.data)
 }
- 
+
 const NPApi = new NowPaymentsApi({ apiKey: '94W13XS-NM44S5X-MMR11S4-XEKMMKG' })
 
 //fetchUrl()
@@ -910,7 +910,7 @@ app.post('/withdraw', limiter, async (req, res) => {
         let dA = dX + dY
 
         if (amount < 100) return res.status(400).send({ success: false, error: 'Minimum withdrawal is 100rs' })
-        if ((dPlans - dA) < amount) return res.status(400).send({ success: false, error: `From your daily limit you can withdraw only Rs${dPlans - dA} today. To increase your limit, check our plans.`})
+        if ((dPlans - dA) < amount) return res.status(400).send({ success: false, error: `From your daily limit you can withdraw only Rs${dPlans - dA} today. To increase your limit, check our plans.` })
         if (balance.mainBalance < parseFloat(amount)) return res.status(400).send({ success: false, error: 'Insufficient Balance' })
 
         let fee = 0;
@@ -1809,37 +1809,39 @@ async function updateFastParityPeriod(id) {
             }
         }
 
-        let newId = await getParityId()
-        await fastParityModel.findOneAndUpdate({ id: id }, { $set: { winner: result } });
+        let newId = await getParityId().then((response) => {
+            return response;
+        });
+
         let updatePeriod = await fastParityModel.findOneAndUpdate({ id: id }, { $set: { winner: result } });
         let getPeriod = await fastParityModel.find().sort({ _id: -1 }).limit(26);
         const firstUpdate = await fastParityOrderModel.updateMany({ period: id }, { $set: { result: result } });
         const getFirstItems = await fastParityOrderModel.find({ period: id })
 
-        const m = [];
-        for (const item of getFirstItems) {
+        let m = [];
+        for (let i = 0; i < getFirstItems.length; i++) {
             let al;
-            if (item.selectType === 'color') {
-                if (item.select === resultInColor) {
-                    al = item.amount * 2
-                    await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: item.amount * 2 } });
+            if (getFirstItems[i].selectType === 'color') {
+                if (getFirstItems[i].select === resultInColor) {
+                    al = getFirstItems[i].amount * 2
+                    await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 2 } });
                 } else {
-                    if (item.select === 'V' && isV) {
-                        al = item.amount * 4.5
-                        await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: item.amount * 4.5 } });
+                    if (getFirstItems[i].select === 'V' && isV) {
+                        al = getFirstItems[i].amount * 4.5
+                        await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 4.5 } });
                     }
                 }
             } else {
-                if (item.selectType === 'number' && item.select === result) {
-                    al = item.amount * 9
-                    await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: item.amount * 9 } });
+                if (getFirstItems[i].selectType === 'number' && getFirstItems[i].select === result) {
+                    al = getFirstItems[i].amount * 9
+                    await balanceModel.updateOne({ id: getFirstItems[i].id }, { $inc: { mainBalance: getFirstItems[i].amount * 9 } });
                 }
             }
 
-            let getD = await userModel.findOne({ id: item.id })
+            let getD = await userModel.findOne({ id: getFirstItems[i].id })
 
             const fi = new financialModel({
-                id: item.id,
+                id: getFirstItems[i].id,
                 title: 'Fast Parity Income',
                 date: ("0" + (new Date().getMonth() + 1)).slice(-2) + '/' + ("0" + (new Date().getDate())).slice(-2) + ' ' + ("0" + (new Date().getHours() + 1)).slice(-2) + ':' + ("0" + (new Date().getMinutes() + 1)).slice(-2),
                 amount: al,
@@ -1848,10 +1850,10 @@ async function updateFastParityPeriod(id) {
             })
 
             if (al) {
-                await fi.save()
+                fi.save()
             }
 
-            const q = { id: item.id, period: id, price: 19975.01, type: item.selectType === 'color' ? true : false, select: item.select, point: item.amount, result }
+            let q = { id: getFirstItems[i].id, period: id, price: 19975.01, type: getFirstItems[i].selectType === 'color' ? true : false, select: getFirstItems[i].select, point: getFirstItems[i].amount, result }
             m.push(q)
         }
 
@@ -1869,6 +1871,7 @@ async function updateFastParityPeriod(id) {
     }
 }
 
+
 app.post('/update-parity-record', limiter, async (req, res) => {
     try {
         const { pid, token } = req.body;
@@ -1878,11 +1881,11 @@ app.post('/update-parity-record', limiter, async (req, res) => {
         let uid = u.id
 
         let resp = await fastParityModel.findOne({ id: pid })
-        let resp4 = await fastParityModel.findOne({ winner: '10'})
+        let resp4 = await fastParityModel.findOne({ winner: '10' })
 
         console.log('ID: ', resp)
-        if(!resp) return res.status(400).send({ success: false, error: 'Invalid period id.'})
-        if(!resp4) return res.status(400).send({ success: false, error: 'Please try after 1 min'})
+        if (!resp) return res.status(400).send({ success: false, error: 'Invalid period id.' })
+        if (!resp4) return res.status(400).send({ success: false, error: 'Please try after 1 min' })
 
         let result = resp?.winner
 
@@ -1953,10 +1956,10 @@ app.post('/update-parity-record', limiter, async (req, res) => {
         }
 
         console.log('updated')
-        return res.status(200).send({ success: true})
+        return res.status(200).send({ success: true })
     } catch (error) {
         console.log('Error: \n', error)
-        return res.status(400).send({ success: false, error: 'Failed to update.'})
+        return res.status(400).send({ success: false, error: 'Failed to update.' })
     }
 })
 
