@@ -1716,7 +1716,10 @@ timer.addEventListener('secondsUpdated', async function () {
 
     if(a > 10) {
         var r = Math.random();
-        var r2 = Math.floor(r * (100 - 1) + 1)
+        
+        function get_amount(from, to) {
+            return Math.floor(r * (from - to) + to)
+        }
 
         function get_random(list) {
             return list[Math.floor((Math.random() * list.length))];
@@ -1727,8 +1730,10 @@ timer.addEventListener('secondsUpdated', async function () {
         })
 
         let t = get_random([true, false, true, true])
+        let t2 = get_random([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2])
+        let t3 = t2 === 1 ? get_amount(1, 9) : t2 === 2 ? get_amount(10, 100) : get_amount(100, 1000)
 
-        io.sockets.to('fastParity').emit('betForward', { amount: 10 * r2, user: randomString(8, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), select: t === true ? get_random(['G', 'R', 'V', 'G', 'R']) : get_random([1, 2, 3, 4, 5, 6, 7, 8, 9, 0]), type: t, period: p })
+        io.sockets.to('fastParity').emit('betForward', { amount: 10 * t3, user: randomString(8, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), select: t === true ? get_random(['G', 'R', 'V', 'G', 'R']) : get_random([1, 2, 3, 4, 5, 6, 7, 8, 9, 0]), type: t, period: p })
     } else {
         if (a === 10) {
         fastParityPeriod().then(response => {
