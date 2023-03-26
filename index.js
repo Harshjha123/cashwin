@@ -1708,13 +1708,29 @@ io.on("connection", (socket) => {
 });
 
 let parityResult, updatedParityId;
-timer.addEventListener('secondsUpdated', function () {
+timer.addEventListener('secondsUpdated', async function () {
     var currentSeconds = timer.getTimeValues().seconds;
     let a = leftTime(currentSeconds)
     console.log(a)
     io.sockets.to('fastParity').emit('counter', { counter: a });
 
-    if (a === 10) {
+    if(a > 10) {
+        var r = Math.random();
+        var r2 = Math.floor(r * (100 - 1) + 1)
+
+        function get_random(list) {
+            return list[Math.floor((Math.random() * list.length))];
+        }
+
+        let p = await fastParityPeriod().then((response) => {
+            return response[0]?.id
+        })
+
+        let t = get_random([true, false, true, true])
+
+        io.sockets.to('fastParity').emit('betForward', { amount: 10 * r2, user: randomString(8, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), select: t === true ? get_random(['G', 'R', 'V', 'G', 'R']) : get_random([1, 2, 3, 4, 5, 6, 7, 8, 9, 0]), type: t, period: p })
+    } else {
+        if (a === 10) {
         fastParityPeriod().then(response => {
             let roomId = parseFloat(response[0]?.id)
             updateFastParityPeriod(roomId).then((response2) => {
@@ -1729,6 +1745,7 @@ timer.addEventListener('secondsUpdated', function () {
             io.sockets.to('fastParity').emit('period', { period: updatedParityId });
             result = []
         }
+    }
     }
 });
 
@@ -1836,17 +1853,17 @@ async function updateFastParityPeriod(id) {
 
         if (item.selectType === 'color') {
             if (item.select === resultInColor) {
-                al = item.amount * 2;
-                await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: item.amount * 2 } });
+                al = (item.amount - (5 * (item.amount / 100))) * 2;
+                await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: (item.amount - (5 * (item.amount / 100))) * 2 } });
             } else {
                 if (item.select === 'V' && isV) {
-                    al = item.amount * 4.5;
-                    await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: item.amount * 4.5 } });
+                    al = (item.amount - (5 * (item.amount / 100))) * 4.5;
+                    await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: (item.amount - (5 * (item.amount / 100))) * 4.5 } });
                 }
             }
         } else if (item.selectType === 'number' && item.select === result) {
-            al = item.amount * 9;
-            await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: item.amount * 9 } });
+            al = (item.amount - (5 * (item.amount / 100))) * 9;
+            await balanceModel.updateOne({ id: item.id }, { $inc: { mainBalance: (item.amount - (5 * (item.amount / 100))) * 9 } });
         }
 
         const getD = await userModel.findOne({ id: item.id })
@@ -1888,19 +1905,6 @@ async function updateFastParityPeriod(id) {
     nData.save(); 
 
     return { result: m, id: newId };
-}
-
-async function createIndexF() {
-    const newId = await getParityId();
-
-    let d = new fastParityModel({
-        id: newId.toString(),
-        winner: '10'
-    });
-
-    d.save()
-
-    console.log('added')
 }
 
 app.post('/update-parity-record', limiter, async (req, res) => {
