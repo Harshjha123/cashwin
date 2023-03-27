@@ -265,7 +265,17 @@ const otpSchema = new mongoose.Schema({
     createdAt: { type: Date, expires: '5m', default: Date.now }
 })
 
+const ffSchema = new mongoose.Schema({
+    id: String,
+    period: String,
+    uid: String,
+    paytm: String,
+    username: String,
+    utr: String
+})
+
 const otpModel = mongoose.model('otp', otpSchema)
+const ffModel = mongoose.model('ffTournament', ffSchema)
 const lifafaModel = mongoose.model('lifafa', lifafaSchema)
 const agentModel = mongoose.model('agent', agentSchema)
 const newRefModel = mongoose.model('newref', newRefSchema)
@@ -306,6 +316,87 @@ app.get('/', async (req, res) => {
         res.json({ error: error })
     }
 });
+
+app.post('/fetch-ff-id', async (req, res) => {
+    try {
+        const { id, period } = req.body;
+        console.log(req.body)
+
+        if (period !== '2303270001') return res.status(400).send({ success: false, error: 'Invalid or Expired Tournament Id' });
+
+        let user = await userModel.findOne({ userToken: id })
+        let resp = await ffModel.findOne({ id: user.id, period });
+        let resp2 = await ffModel.find({ period: period })
+
+        return res.status(200).send({ success: true, total: resp2.length, joined: resp ? true : false, link: resp ? 'https://telegram.me/+6N3G0DEuVE0yNzc1' : '' })
+    } catch (error) {
+        console.log('Error: \n', error)
+        return res.status(400).send({ success: false, error: 'Failed to fetch' });
+    }
+})
+
+app.post('/register-ff-tournament', limiter, async (req, res) => {
+    try {
+        const { id, utr, paytm, uid, username, period } = req.body;
+        console.log(req.body);
+
+        const url = 'https://payments-tesseract.bharatpe.in/api/v1/merchant/transactions'
+
+        const params = {
+            module: 'PAYMENT_QR',
+            merchantId: '41566668',
+            sDate: '1678300200000',
+            eDate: Date.now()
+        }
+
+        const headers = {
+            'accept': 'application/json, text/javascript, */*; q=0.01',
+            'accept-encoding': 'gzip, deflate, br',
+            'accept-language': 'en-US,en;q=0.9,it;q=0.8',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-site',
+            'token': '7dc99f0035b044998bcfff412be095dc', //your login token 
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.63'
+        };
+
+        if (period !== '2303270001') return res.status(400).send({ success: false, error: 'Invalid or Expired Tournament Id' });
+
+        let user = await userModel.findOne({ userToken: id })
+        let resp = await ffModel.findOne({ id: user.id, period });
+        if (resp) return res.status(400).send({ success: false, error: 'You are already registered' });
+
+        let resp2 = await ffModel.find({ period: period })
+        if (resp2.length === 48) return res.status(400).send({ success: false, error: 'Max player reached' })
+
+        let resp4 = await depositModel.findOne({ orderId: utr })
+        let resp5 = await ffModel.findOne({ utr: utr })
+        if (resp4 || resp5) return res.status(400).send({ success: false, error: 'The utr is already used or invalid' })
+
+        let response = await axios.get(url, { params, headers })
+        let data2 = response.data?.data?.transactions
+
+        let respo = data2.filter(x => x.bankReferenceNo === utr.toString())
+        let data = respo[0]
+
+        if (!data || data.type !== 'PAYMENT_RECV' || data.status !== 'SUCCESS') return res.status(400).send({ success: false, error: 'Failed to fetch payment' })
+        if (parseFloat(data.amount) < 50) return res.status(400).send({ success: false, error: 'Paid amount must be equal to 50' })
+
+        let a = new ffModel({
+            id: user.id,
+            period,
+            uid,
+            paytm,
+            username,
+            utr
+        })
+
+        a.save()
+        return res.status(200).send({ success: true, joined: true, link: 'https://telegram.me/+6N3G0DEuVE0yNzc1'  })
+    } catch (error) {
+        console.log('Error: \n', error)
+        return res.status(400).send({ success: false, error: 'Something went wrong'})
+    }
+})
 
 app.post('/send-otp', limiter, async (req, res) => {
     try {
@@ -1714,9 +1805,9 @@ timer.addEventListener('secondsUpdated', async function () {
     console.log(a)
     io.sockets.to('fastParity').emit('counter', { counter: a });
 
-    if(a > 10) {
+    if (a > 10) {
         var r = Math.random();
-        
+
         function get_amount(from, to) {
             return Math.floor(r * (from - to) + to)
         }
@@ -1736,21 +1827,21 @@ timer.addEventListener('secondsUpdated', async function () {
         io.sockets.to('fastParity').emit('betForward', { amount: 10 * t3, user: randomString(8, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), select: t === true ? get_random(['G', 'R', 'V', 'G', 'R']) : get_random([1, 2, 3, 4, 5, 6, 7, 8, 9, 0]), type: t, period: p })
     } else {
         if (a === 10) {
-        fastParityPeriod().then(response => {
-            let roomId = parseFloat(response[0]?.id)
-            updateFastParityPeriod(roomId).then((response2) => {
-                parityResult = response2?.result
-                updatedParityId = response2?.id
+            fastParityPeriod().then(response => {
+                let roomId = parseFloat(response[0]?.id)
+                updateFastParityPeriod(roomId).then((response2) => {
+                    parityResult = response2?.result
+                    updatedParityId = response2?.id
+                })
             })
-        })
-    } else {
-        if (a === 0) {
-            console.log(parityResult, updatedParityId)
-            io.sockets.to('fastParity').emit('result', { result: parityResult })
-            io.sockets.to('fastParity').emit('period', { period: updatedParityId });
-            result = []
+        } else {
+            if (a === 0) {
+                console.log(parityResult, updatedParityId)
+                io.sockets.to('fastParity').emit('result', { result: parityResult })
+                io.sockets.to('fastParity').emit('period', { period: updatedParityId });
+                result = []
+            }
         }
-    }
     }
 });
 
@@ -1847,7 +1938,7 @@ async function updateFastParityPeriod(id) {
         await fastParityModel.ensureIndexes({ _id: -1 })
     ]);
 
-    const m =[]
+    const m = []
 
     const getPeriod = await fastParityModel.find().sort({ _id: -1 }).limit(26);
     const firstUpdate = await fastParityOrderModel.updateMany({ period: id }, updateObj);
@@ -1907,7 +1998,7 @@ async function updateFastParityPeriod(id) {
         winner: '10'
     });
 
-    nData.save(); 
+    nData.save();
 
     return { result: m, id: newId };
 }
